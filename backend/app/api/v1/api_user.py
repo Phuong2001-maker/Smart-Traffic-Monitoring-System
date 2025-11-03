@@ -13,7 +13,11 @@ class PasswordUpdateRequest(BaseModel):
     old_password: str
     new_password: str
 
-@router.put("/password")
+@router.put(
+    "/password",
+    summary="Thay đổi mật khẩu",
+    description="API cập nhật mật khẩu của user. Yêu cầu xác thực mật khẩu cũ và JWT authentication."
+)
 async def update_password(
     request: PasswordUpdateRequest,
     current_user: User = Depends(get_current_user),
@@ -52,7 +56,11 @@ class ProfileUpdateRequest(BaseModel):
     email: Optional[str] = None
     phone_number: Optional[str] = None
 
-@router.put("/profile")
+@router.put(
+    "/profile",
+    summary="Cập nhật thông tin cá nhân",
+    description="API cập nhật profile của user (username, email, phone_number). Username, email và số điện thoại phải là duy nhất. Yêu cầu JWT authentication."
+)
 async def update_profile(
     request: ProfileUpdateRequest,
     current_user: User = Depends(get_current_user),

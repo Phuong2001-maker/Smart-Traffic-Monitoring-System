@@ -7,7 +7,11 @@ from utils.system_metrics import get_system_metrics
 router = APIRouter(prefix="/admin")
 
 
-@router.get("/resources")
+@router.get(
+    "/resources",
+    summary="Lấy thông tin tài nguyên hệ thống",
+    description="API trả về metrics hệ thống (CPU, RAM, Disk, Network). Chỉ admin (role_id = 0) mới có quyền truy cập."
+)
 async def get_resources(current_user: User = Depends(get_current_user)):
     """Return basic system metrics. Admin only (role_id = 0)."""
     if current_user.role_id != 0:

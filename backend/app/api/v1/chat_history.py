@@ -23,7 +23,13 @@ from db.base import get_db
 router = APIRouter()
 
 
-@router.post("/messages", response_model=ChatMessageResponse, status_code=201)
+@router.post(
+    "/messages",
+    response_model=ChatMessageResponse,
+    status_code=201,
+    summary="Lưu tin nhắn chat",
+    description="API lưu một tin nhắn chat mới vào database. Hỗ trợ lưu cả tin nhắn từ user và AI response, kèm theo ảnh và metadata. Yêu cầu JWT authentication."
+)
 async def create_chat_message(
     message_data: ChatMessageCreate,
     current_user: User = Depends(get_current_user),
@@ -52,7 +58,12 @@ async def create_chat_message(
     return new_message
 
 
-@router.get("/messages", response_model=List[ChatMessageListResponse])
+@router.get(
+    "/messages",
+    response_model=List[ChatMessageListResponse],
+    summary="Lấy lịch sử chat",
+    description="API lấy lịch sử chat của user hiện tại với phân trang và filter theo thời gian. Trả về danh sách tin nhắn theo thứ tự cũ → mới. Yêu cầu JWT authentication."
+)
 async def get_chat_history(
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
@@ -95,7 +106,12 @@ async def get_chat_history(
     ]
 
 
-@router.delete("/messages", status_code=204)
+@router.delete(
+    "/messages",
+    status_code=204,
+    summary="Xóa toàn bộ lịch sử chat",
+    description="API xóa tất cả tin nhắn chat của user hiện tại. Không thể hoàn tác sau khi xóa. Yêu cầu JWT authentication."
+)
 async def clear_chat_history(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -111,7 +127,12 @@ async def clear_chat_history(
     return None
 
 
-@router.delete("/messages/{message_id}", status_code=204)
+@router.delete(
+    "/messages/{message_id}",
+    status_code=204,
+    summary="Xóa một tin nhắn cụ thể",
+    description="API xóa một tin nhắn chat theo ID. User chỉ có thể xóa tin nhắn của chính mình. Yêu cầu JWT authentication."
+)
 async def delete_chat_message(
     message_id: int,
     current_user: User = Depends(get_current_user),
@@ -138,7 +159,11 @@ async def delete_chat_message(
     return None
 
 
-@router.get("/messages/count")
+@router.get(
+    "/messages/count",
+    summary="Đếm số lượng tin nhắn",
+    description="API trả về tổng số tin nhắn chat của user hiện tại. Yêu cầu JWT authentication."
+)
 async def get_message_count(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
