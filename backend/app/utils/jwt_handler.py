@@ -9,7 +9,7 @@ from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 def create_access_token(data: dict):
     """ Tạo JWT access token từ dữ liệu đầu vào.
