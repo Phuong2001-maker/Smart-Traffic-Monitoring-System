@@ -134,6 +134,13 @@ import { useWebSocket } from "../../../../hooks/useWebSocket";
 
 import { endpoints, authConfig } from "../../../../config";
 
+// Helper function để tạo unique message ID với random string
+const generateMessageId = () => {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 15);
+  return `msg_${timestamp}_${random}`;
+};
+
 interface VehicleData {
   count_car: number;
   count_motor: number;
@@ -465,7 +472,7 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
 
     // Add user message
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: generateMessageId(),
       text: userMessage,
       user: true,
       time: new Date().toLocaleTimeString("vi-VN"),
@@ -487,7 +494,7 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
         setMessages((prev) => [
           ...prev.filter((msg) => msg.id !== "typing"),
           {
-            id: Date.now().toString(),
+            id: generateMessageId(),
             text: "Không thể kết nối tới AI. Vui lòng thử lại sau.",
             user: false,
             time: new Date().toLocaleTimeString("vi-VN"),
@@ -507,7 +514,7 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
         setMessages((prev) => [
           ...prev.filter((msg) => msg.id !== "typing"),
           {
-            id: Date.now().toString(),
+            id: generateMessageId(),
             text: "Không thể gửi tin nhắn tới AI. Vui lòng thử lại.",
             user: false,
             time: new Date().toLocaleTimeString("vi-VN"),
@@ -524,7 +531,7 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
       setMessages((prev) => [
         ...prev.filter((msg) => msg.id !== "typing"),
         {
-          id: Date.now().toString(),
+          id: generateMessageId(),
           text: "Đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại.",
           user: false,
           time: new Date().toLocaleTimeString("vi-VN"),
@@ -585,7 +592,7 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
         return [
           ...filtered,
           {
-            id: Date.now().toString(),
+            id: generateMessageId(),
             text: processedText,
             user: false,
             time: new Date().toLocaleTimeString("vi-VN"),

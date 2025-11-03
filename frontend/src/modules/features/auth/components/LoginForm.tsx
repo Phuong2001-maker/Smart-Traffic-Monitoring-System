@@ -19,10 +19,15 @@ function Login({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
     setLoading(true);
     setError("");
     try {
+      // OAuth2 yêu cầu application/x-www-form-urlencoded
+      const formData = new URLSearchParams();
+      formData.append("username", email); // OAuth2 dùng field "username" cho cả email/username
+      formData.append("password", password);
+
       const res = await fetch(authConfig.LOGIN_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData,
       });
       const data = await res.json();
       if (res.ok && data.access_token) {
