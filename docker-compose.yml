@@ -1,7 +1,20 @@
 version: "3.9"
 
 services:
-  fastapi:
+  database:
+    image: postgres:16
+    container_name: database
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: transportation_system
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - mynet
+  backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -12,6 +25,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/app/video_test:/backend/app/video_test
+    depends_on:
+      - database
     networks:
       - mynet
 
@@ -23,7 +38,7 @@ services:
     ports:
       - "5173:5173"
     depends_on:
-      - fastapi
+      - backend
     networks:
       - mynet
 
