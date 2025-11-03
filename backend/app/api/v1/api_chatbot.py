@@ -1,11 +1,9 @@
-from streamlit import user
 from api.v1 import state
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from schemas.ChatRequest import ChatRequest 
 from schemas.ChatResponse import ChatResponse
-import asyncio
 from services.chat_services.ChatBotAgent import ChatBotAgent
-from utils.jwt_handler import get_current_user, decode_access_token, get_user_by_token
+from utils.jwt_handler import get_current_user, get_user_by_token, extract_token_from_websocket
 from fastapi import Depends, status
 from db.base import AsyncSessionLocal
 
@@ -25,7 +23,12 @@ def start_up():
             state.agent = None
 
 
-@router.post(path='/chat', response_model=ChatResponse)
+@router.post(
+    path='/chat',
+    response_model=ChatResponse,
+    summary="Chat với AI Assistant",
+    description="API gửi tin nhắn tới AI Chatbot và nhận phản hồi. AI có thể trả lời về giao thông, cung cấp hình ảnh và thông tin liên quan. Yêu cầu JWT authentication."
+)
 async def chat(request: ChatRequest, current_user=Depends(get_current_user)):
     data = await state.agent.get_response(request.message, id= current_user.id)
     return ChatResponse(
@@ -33,7 +36,12 @@ async def chat(request: ChatRequest, current_user=Depends(get_current_user)):
         image=data["image"]
     )
     
-@router.post(path='/chat_no_auth', response_model=ChatResponse)
+@router.post(
+    path='/chat_no_auth',
+    response_model=ChatResponse,
+    summary="Chat với AI (không xác thực)",
+    description="API gửi tin nhắn tới AI Chatbot KHÔNG yêu cầu authentication. Dùng cho demo hoặc public access. Mặc định sử dụng user_id = 1."
+)
 async def chat_no_auth(request: ChatRequest):
     data = await state.agent.get_response(request.message, id= 1)
     return ChatResponse(
@@ -43,26 +51,32 @@ async def chat_no_auth(request: ChatRequest):
     
     
 
-@router.websocket("/ws/chat")
+@router.websocket(
+    "/ws/chat",
+    name="WebSocket Chat"
+)
 async def websocket_chat(websocket: WebSocket):
     """
-    WebSocket endpoint cho Agent (ChatBotAgent):
-    - Client gửi JSON {"message": "..."}
-    - Server trả JSON {"message": "...", "image": "..."}
+    WebSocket endpoint cho AI ChatBot Agent.
+    
+    Flow:
+    - Client gửi JSON: {"message": "..."}
+    - Server trả JSON: {"message": "...", "image": "..."}
+    
+    Authentication:
+        Yêu cầu token qua query params (?token=...), cookie (access_token), hoặc header (Authorization: Bearer ...)
     """
     await websocket.accept()
-    # Lấy token thủ công cho WebSocket
-    token = (
-        websocket.query_params.get("token")
-        or websocket.cookies.get("access_token")
-        or websocket.headers.get("authorization")
-    )
-    if token and token.lower().startswith("bearer "):
-        token = token.split(" ", 1)[1]
+    
+    # Lấy token từ WebSocket connection
+    token = extract_token_from_websocket(websocket)
+    
     if not token:
         await websocket.send_json({"detail": "Unauthorized — missing or invalid token"})
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
+    
+    # Xác thực token
     async with AsyncSessionLocal() as db:
         user = await get_user_by_token(token, db)
         if not user:
