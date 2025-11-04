@@ -28,11 +28,11 @@ class SettingMetricTransport:
         "./video_test/Đường Láng.mp4",
     ]
 
-    METER_PER_PIXELS = [0.08,
-                        0.25,
-                        0.8,
-                        0.2,
-                        0.1
+    METER_PER_PIXELS = [0.1,
+                        0.15,
+                        0.42,
+                        0.15,
+                        0.05
                         ]
     MODELS_PATH = r'./ai_models/model N/openvino models/best_int8_openvino_model'
 

@@ -47,7 +47,7 @@ async def chat_no_auth(request: ChatRequest):
     )
     
 @router.websocket(
-    "/ws/chat",
+    path = "/ws/chat",
     name="WebSocket Chat"
 )
 async def websocket_chat(
