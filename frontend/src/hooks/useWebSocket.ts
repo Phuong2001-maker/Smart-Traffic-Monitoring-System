@@ -7,16 +7,17 @@ interface WebSocketHookOptions {
   onOpen?: () => void;
   onClose?: () => void;
   onError?: (error: Event) => void;
+  authToken?: string | null; // Token for authentication
 }
 
 interface WebSocketHook {
-  data: any;
+  data: unknown;
   isConnected: boolean;
   error: string | null;
   reconnectCount: number;
   connect: () => void;
   disconnect: () => void;
-  send: (payload: any) => boolean;
+  send: (payload: unknown) => boolean;
 }
 
 export const useWebSocket = (
@@ -24,14 +25,14 @@ export const useWebSocket = (
   options: WebSocketHookOptions = {}
 ): WebSocketHook => {
   const {
-    reconnectInterval = 2000, // Giảm thời gian chờ retry xuống 2s
     maxReconnectAttempts = 10, // Tăng số lần retry lên 10
     onOpen,
     onClose,
     onError,
+    authToken,
   } = options;
 
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<unknown>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reconnectCount, setReconnectCount] = useState(0);
@@ -54,7 +55,16 @@ export const useWebSocket = (
         return;
       }
 
-      wsRef.current = new WebSocket(url);
+      // Build WebSocket URL with authentication
+      // Backend supports: query params (?token=...), header (via subprotocol), or cookie
+      // We'll use query params as primary method for WebSocket compatibility
+      let wsUrl = url;
+      if (authToken) {
+        const separator = url.includes("?") ? "&" : "?";
+        wsUrl = `${url}${separator}token=${encodeURIComponent(authToken)}`;
+      }
+
+      wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
         if (!mountedRef.current) return;
@@ -144,9 +154,9 @@ export const useWebSocket = (
     }
   }, [
     url,
+    authToken,
     reconnectCount,
     maxReconnectAttempts,
-    reconnectInterval,
     onOpen,
     onClose,
     onError,
@@ -251,20 +261,26 @@ export const useWebSocket = (
 // Hook specifically for traffic info WebSocket
 export const useTrafficInfo = (roadName: string | null) => {
   const wsUrl = roadName ? endpoints.infoWs(roadName) : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   return useWebSocket(wsUrl, {
     reconnectInterval: 5000,
     maxReconnectAttempts: 3,
+    authToken: token,
   });
 };
 
 // Hook specifically for frame WebSocket
 export const useFrameStream = (roadName: string | null) => {
   const wsUrl = roadName ? endpoints.framesWs(roadName) : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   return useWebSocket(wsUrl, {
     reconnectInterval: 2000,
     maxReconnectAttempts: 5,
+    authToken: token,
   });
 };
 
@@ -319,8 +335,13 @@ export const useMultipleTrafficInfo = (roadNames: string[]) => {
     roadNames.forEach((road) => {
       if (currentSockets[road]) return;
       const token = localStorage.getItem("access_token");
-      const wsUrl = token ? `${endpoints.infoWs(road)}?token=${encodeURIComponent(token)}` : endpoints.infoWs(road);
-      const ws = new WebSocket(wsUrl);
+      // Don't add token to URL manually - will be handled by WebSocket subprotocol or query param
+      const wsUrl = endpoints.infoWs(road);
+      const separator = wsUrl.includes("?") ? "&" : "?";
+      const fullUrl = token
+        ? `${wsUrl}${separator}token=${encodeURIComponent(token)}`
+        : wsUrl;
+      const ws = new WebSocket(fullUrl);
       currentSockets[road] = ws;
 
       ws.onopen = () => setConnections((prev) => ({ ...prev, [road]: true }));
@@ -330,7 +351,7 @@ export const useMultipleTrafficInfo = (roadNames: string[]) => {
           if (lastMessageRef.current[road] === event.data) return;
           lastMessageRef.current[road] = event.data;
           const parsed = JSON.parse(event.data);
-          
+
           // Transform the data to match VehicleData interface
           const vehicleData: VehicleData = {
             count_car: parsed.count_car || 0,
@@ -338,7 +359,7 @@ export const useMultipleTrafficInfo = (roadNames: string[]) => {
             speed_car: parsed.speed_car || 0,
             speed_motor: parsed.speed_motor || 0,
           };
-          
+
           setTrafficData((prev) => {
             const prevForRoad = prev[road];
             // Cheap stringify compare to guard nested equality
@@ -414,8 +435,12 @@ export const useMultipleFrameStreams = (roadNames: string[]) => {
     roadNames.forEach((road) => {
       if (currentSockets[road]) return;
       const token = localStorage.getItem("access_token");
-      const wsUrl = token ? `${endpoints.framesWs(road)}?token=${encodeURIComponent(token)}` : endpoints.framesWs(road);
-      const ws = new WebSocket(wsUrl);
+      const wsUrl = endpoints.framesWs(road);
+      const separator = wsUrl.includes("?") ? "&" : "?";
+      const fullUrl = token
+        ? `${wsUrl}${separator}token=${encodeURIComponent(token)}`
+        : wsUrl;
+      const ws = new WebSocket(fullUrl);
       ws.binaryType = "arraybuffer"; // Set to handle binary data
       currentSockets[road] = ws;
 

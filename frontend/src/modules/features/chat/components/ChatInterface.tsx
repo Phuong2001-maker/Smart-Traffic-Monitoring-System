@@ -7,7 +7,8 @@ import {
   saveChatDraft,
   clearChatDraft,
 } from "@/utils/chatStorage";
-// Component fetch và hiển thị ảnh từ URL API (có token)
+import { apiConfig, authConfig, endpoints } from "@/config";
+// Component fetch và hiển thị ảnh từ URL API bằng Authorization header
 const ChatImageFromUrl = ({ url }: { url: string }) => {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -16,8 +17,13 @@ const ChatImageFromUrl = ({ url }: { url: string }) => {
     async function fetchImg() {
       setError(false);
       try {
-        const authUrl = addTokenToImageUrl(url);
-        const res = await fetch(authUrl);
+        const token = typeof window !== "undefined" ? localStorage.getItem(authConfig.TOKEN_KEY) : null;
+        const isLocalApi = url.startsWith(apiConfig.API_HTTP_BASE);
+        const headers: HeadersInit = {};
+        if (token && isLocalApi) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+        const res = await fetch(url, { headers, credentials: "include" });
         if (!res.ok) throw new Error("fetch error");
         const blob = await res.blob();
         if (!cancelled) setBlobUrl(URL.createObjectURL(blob));
@@ -105,13 +111,19 @@ const markdownComponents: Components = {
       </pre>
     );
   },
-  img: (props) => (
-    <img
-      {...props}
-      style={{ maxWidth: "100%", borderRadius: 8, margin: "8px 0" }}
-      alt="Markdown img"
-    />
-  ),
+  img: (props) => {
+    const src = (props as { src?: string }).src;
+    if (src && src.startsWith(apiConfig.API_HTTP_BASE)) {
+      return <ChatImageFromUrl url={src} />;
+    }
+    return (
+      <img
+        {...props}
+        style={{ maxWidth: "100%", borderRadius: 8, margin: "8px 0" }}
+        alt="Markdown img"
+      />
+    );
+  },
   ul: (props) => <ul {...props} style={{ paddingLeft: 20, margin: "8px 0" }} />,
   ol: (props) => <ol {...props} style={{ paddingLeft: 20, margin: "8px 0" }} />,
   li: (props) => <li {...props} style={{ marginBottom: 4 }} />,
@@ -131,8 +143,6 @@ const markdownComponents: Components = {
   p: (props) => <p {...props} style={{ margin: "8px 0" }} />,
 };
 import { useWebSocket } from "../../../../hooks/useWebSocket";
-
-import { endpoints, authConfig } from "../../../../config";
 
 // Helper function để tạo unique message ID với random string
 const generateMessageId = () => {
@@ -415,9 +425,7 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
 
   // Chat WebSocket with authentication - setup trước để dùng trong handlers
   const token = localStorage.getItem(authConfig.TOKEN_KEY);
-  const chatWsUrl = token
-    ? `${endpoints.chatWs}?token=${encodeURIComponent(token)}`
-    : null;
+  const chatWsUrl = endpoints.chatWs;
 
   // Show message if no token
   useEffect(() => {
@@ -434,6 +442,7 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
   } = useWebSocket(chatWsUrl, {
     reconnectInterval: 3000,
     maxReconnectAttempts: 5,
+    authToken: token,
   });
 
   useEffect(() => {
@@ -549,9 +558,9 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
     try {
       // Log toàn bộ dữ liệu nhận được từ WebSocket
       console.log("WebSocket Raw Response:", chatData);
-
-      const responseText = chatData?.message as string | undefined;
-      const responseImage = chatData?.image as string[] | undefined;
+      const payload = chatData as { message?: string; image?: string[] } | undefined;
+      const responseText = payload?.message;
+      const responseImage = payload?.image;
 
       // Log chi tiết từng phần của response
       console.log("Response Text:", responseText);

@@ -9,15 +9,9 @@ const AnalyticsPage = () => {
   useEffect(() => {
     const fetchRoads = async () => {
       try {
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-          setAllowedRoads([]);
-          return;
-        }
-        const res = await fetch(endpoints.roadNames, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.status === 401) {
+        // roads_name endpoint không cần authentication
+        const res = await fetch(endpoints.roadNames);
+        if (!res.ok) {
           setAllowedRoads([]);
           return;
         }

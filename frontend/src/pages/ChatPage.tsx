@@ -8,15 +8,9 @@ export default function ChatPage() {
 
   useEffect(() => {
     const fetchRoads = async () => {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        setAllowedRoads([]);
-        return;
-      }
       try {
-        const res = await fetch(endpoints.roadNames, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // roads_name endpoint không cần authentication
+        const res = await fetch(endpoints.roadNames);
         if (!res.ok) {
           setAllowedRoads([]);
           return;

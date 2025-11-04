@@ -35,24 +35,23 @@ const TrafficDashboard = () => {
   useEffect(() => {
     const fetchRoads = async () => {
       try {
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-          setAllowedRoads([]);
-          alert("Bạn cần đăng nhập để sử dụng chức năng này!");
-          return;
-        }
-        const res = await fetch(endpoints.roadNames, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.status === 401) {
-          setAllowedRoads([]);
-          alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+        // roads_name endpoint không cần authentication
+        const res = await fetch(endpoints.roadNames);
+        if (!res.ok) {
+          console.error("Failed to fetch road names");
+          setAllowedRoads([
+            "Văn Phú",
+            "Nguyễn Trãi",
+            "Ngã Tư Sở",
+            "Đường Láng",
+          ]);
           return;
         }
         const json = await res.json();
         const names: string[] = json?.road_names ?? [];
         setAllowedRoads(names);
-      } catch {
+      } catch (error) {
+        console.error("Error fetching roads:", error);
         setAllowedRoads([
           "Văn Phú",
           "Nguyễn Trãi",
