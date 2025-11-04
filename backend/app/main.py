@@ -55,46 +55,6 @@ def signal_handler(signum, frame):
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
-@app.get(
-    path='/',
-    tags=["Root"],
-    summary="Redirect to Frontend",
-    description="Redirect người dùng đến trang Frontend"
-)
-def direct_home():
-    return RedirectResponse(url= settings_network.URL_FRONTEND)
-
-
-app.include_router(
-    v1.api_auth.router, 
-    prefix="/api/v1", 
-    tags=["Authentication"],
-)
-app.include_router(
-    v1.api_user.router, 
-    prefix="/api/v1/users", 
-    tags=["User Management"],
-)
-app.include_router(
-    v1.api_vehicles_frames.router, 
-    prefix="/api/v1", 
-    tags=["Traffic Monitoring"],
-)
-app.include_router(
-    v1.api_chatbot.router, 
-    prefix="/api/v1", 
-    tags=["AI Chatbot"],
-)
-app.include_router(
-    v1.chat_history.router,
-    prefix="/api/v1/chat",
-    tags=["Chat History"],
-)
-app.include_router(
-    v1.api_admin.router, 
-    prefix="/api/v1/admin", 
-    tags=["Admin Tools"],
-)
 
 @app.on_event("startup")
 async def startup_event():
@@ -112,3 +72,43 @@ def shutdown():
     print("Tắt mọi thứ...")
     if v1.state.analyzer:
         v1.state.analyzer.cleanup_processes()
+
+@app.get(
+    path='/',
+    tags=["Root"],
+    summary="Redirect to Frontend",
+    description="Redirect người dùng đến trang Frontend"
+)
+def direct_home():
+    return RedirectResponse(url= settings_network.URL_FRONTEND)
+
+app.include_router(
+    router= v1.api_auth.router, 
+    prefix="/api/v1", 
+    tags=["Authentication"],
+)
+app.include_router(
+    router= v1.api_user.router, 
+    prefix="/api/v1/users", 
+    tags=["User Management"],
+)
+app.include_router(
+    router= v1.api_vehicles_frames.router, 
+    prefix="/api/v1", 
+    tags=["Traffic Monitoring"],
+)
+app.include_router(
+    router= v1.api_chatbot.router, 
+    prefix="/api/v1", 
+    tags=["AI Chatbot"],
+)
+app.include_router(
+    router= v1.chat_history.router,
+    prefix="/api/v1/chat",
+    tags=["Chat History"],
+)
+app.include_router(
+    router= v1.api_admin.router,
+    prefix="/api/v1", 
+    tags=["Admin Tools"],
+)
