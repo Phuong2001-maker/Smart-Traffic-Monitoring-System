@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 router = APIRouter(prefix="/auth")
 
 @router.post(
-    "/register",
+    path= "/register",
     summary="Đăng ký tài khoản mới",
     description="API đăng ký user mới với thông tin username, password, email và phone_number. Username, email và số điện thoại phải là duy nhất trong hệ thống.",
     status_code=201
@@ -28,15 +28,15 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(new_user)
     try:
         await db.commit()
-        return {"msg": "Register successful"}
+        return {"msg": "Đăng ký thành công"}
     except IntegrityError:
         await db.rollback()
         raise HTTPException(status_code=400, detail="Username, email hoặc số điện thoại đã tồn tại!")
 
 @router.post(
-    "/login",
+    path= "/login",
     summary="Đăng nhập vào hệ thống",
-    description="API đăng nhập OAuth2 compatible. Sử dụng email hoặc username cùng với password để lấy access token. Token này dùng để xác thực các request tiếp theo."
+    description="API đăng nhập OAuth2 compatible. Sử dụng email cùng với password để lấy access token. Token này dùng để xác thực các request tiếp theo."
 )
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), 
@@ -47,12 +47,11 @@ async def login(
     OAuth2 compatible token login, get an access token for future requests.
     
     Có thể login bằng:
-    - username field: nhập email hoặc username
+    - username field: nhập email
     - password field: nhập password
     """
-    # Thử tìm user bằng email hoặc username
     q = select(User).where(
-        (User.email == form_data.username) | (User.username == form_data.username)
+        User.email == form_data.username
     )
     result = await db.execute(q)
     user_db = result.scalar()
@@ -63,10 +62,18 @@ async def login(
             detail="Sai thông tin đăng nhập",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    token = create_access_token({"sub": user_db.username})
 
-    # Set HttpOnly cookie for browsers (useful for WebSocket auth)
+    # Build full user claims for the JWT (avoid sensitive fields like password)
+    token_payload = {
+        "sub": user_db.email,  # keep for backward compatibility
+        "uid": user_db.id,
+        "username": user_db.username,
+        "email": user_db.email,
+        "phone_number": user_db.phone_number,
+        "role_id": user_db.role_id,
+    }
+    token = create_access_token(token_payload)
+
     try:
         if response is not None:
             # Expiry in seconds
@@ -83,13 +90,12 @@ async def login(
                 path="/",
             )
     except Exception:
-        # If setting cookie fails, still return token in body
         pass
 
     return {"access_token": token, "token_type": "bearer"}
 
 @router.get(
-    "/me",
+    path= "/me",
     response_model=UserOut,
     summary="Lấy thông tin user hiện tại",
     description="API trả về thông tin chi tiết của user đang đăng nhập. Yêu cầu JWT authentication."
@@ -97,33 +103,3 @@ async def login(
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Lấy thông tin user hiện tại"""
     return current_user
-
-@router.put(
-    "/me",
-    response_model=UserOut,
-    summary="Cập nhật thông tin user",
-    description="API cập nhật thông tin cá nhân của user (username, email, phone_number, password). Username, email và số điện thoại phải là duy nhất. Yêu cầu JWT authentication."
-)
-async def update_user_info(
-    user_update: UserUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Cập nhật thông tin user"""
-    try:
-        # Cập nhật các trường được cung cấp
-        if user_update.username is not None:
-            current_user.username = user_update.username
-        if user_update.email is not None:
-            current_user.email = user_update.email
-        if user_update.phone_number is not None:
-            current_user.phone_number = user_update.phone_number
-        if user_update.password is not None:
-            current_user.password = hash_password(user_update.password)
-        
-        await db.commit()
-        await db.refresh(current_user)
-        return current_user
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(status_code=400, detail="Username, email hoặc số điện thoại đã tồn tại!")
