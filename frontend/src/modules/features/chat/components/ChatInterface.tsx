@@ -17,7 +17,10 @@ const ChatImageFromUrl = ({ url }: { url: string }) => {
     async function fetchImg() {
       setError(false);
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem(authConfig.TOKEN_KEY) : null;
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem(authConfig.TOKEN_KEY)
+            : null;
         const isLocalApi = url.startsWith(apiConfig.API_HTTP_BASE);
         const headers: HeadersInit = {};
         if (token && isLocalApi) {
@@ -558,7 +561,9 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
     try {
       // Log toàn bộ dữ liệu nhận được từ WebSocket
       console.log("WebSocket Raw Response:", chatData);
-      const payload = chatData as { message?: string; image?: string[] } | undefined;
+      const payload = chatData as
+        | { message?: string; image?: string[] }
+        | undefined;
       const responseText = payload?.message;
       const responseImage = payload?.image;
 

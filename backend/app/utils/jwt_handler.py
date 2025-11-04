@@ -9,7 +9,7 @@ from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Union
 
-# OAuth2 scheme for form-based login (standard)
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 def extract_token(source: Union[Request, WebSocket]) -> Optional[str]:
@@ -77,21 +77,11 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
-    Lấy user hiện tại từ token, hỗ trợ nhiều nguồn:
-    - Authorization header: Bearer <token> (OAuth2 standard)
-    - Cookie: access_token
-    - Query params: token=<token>
-    
-    Dùng cho cả HTTP và WebSocket endpoints.
+    HTTP-only dependency: xác thực qua OAuth2 Bearer token trong Authorization header.
+    - Không fallback cookie hoặc query params cho HTTP endpoints.
+    - Trả về 401 nếu không có hoặc token không hợp lệ.
     """
-    # HTTP endpoints: chỉ dùng OAuth2 Bearer header. Không fallback sang cookie/query.
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token không hợp lệ hoặc không tồn tại.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
+    # Yêu cầu bắt buộc Bearer token trong Authorization header
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -113,7 +103,10 @@ async def get_current_user_ws(
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
-    Dependency cho WebSocket: lấy token linh hoạt từ header/cookie/query params.
+    WebSocket-only dependency: lấy token linh hoạt từ header/cookie/query params.
+    - Dùng cho browser WebSocket không thể set Authorization header.
+    - Chấp nhận các nguồn: Authorization header (Bearer), cookie access_token, query param ?token=...
+    - Trả về 401 nếu không có hoặc token không hợp lệ.
     """
     token = extract_token(websocket)
     if not token:
@@ -149,64 +142,4 @@ async def get_user_by_token(token: str, db: AsyncSession) -> Optional[User]:
         return None
     result = await db.execute(select(User).where(User.username == email))
     user = result.scalar()
-    return user
-
-async def get_current_user_flexible(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-) -> User:
-    """
-    Lấy user hiện tại từ token, hỗ trợ nhiều nguồn:
-    - Authorization header: Bearer <token>
-    - Cookie: access_token
-    - Query params: token=<token>
-    """
-    token = extract_token(request)
-    
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token không hợp lệ hoặc không tồn tại.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    user = await get_user_by_token(token, db)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="user không tồn tại."
-        )
-    return user
-
-
-async def authenticate_websocket(websocket: WebSocket, db: AsyncSession) -> Optional[User]:
-    """
-    Xác thực WebSocket connection và trả về User.
-    Tự động xử lý lỗi authentication và đóng connection nếu thất bại.
-    
-    Args:
-        websocket: WebSocket connection
-        db: Database session
-        
-    Returns:
-        User nếu xác thực thành công, None nếu thất bại (connection đã được đóng)
-        
-    Usage:
-        async with AsyncSessionLocal() as db:
-            user = await authenticate_websocket(websocket, db)
-            if not user:
-                return  # Connection đã được đóng tự động
-    """
-    token = extract_token(websocket)
-    if not token:
-        await websocket.send_json({"detail": "Lỗi xác thực: không tìm thấy token"})
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return None
-    
-    user = await get_user_by_token(token, db)
-    if not user:
-        await websocket.send_json({"detail": "Lỗi xác thực: token không hợp lệ hoặc user không tồn tại"})
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return None
-    
     return user
