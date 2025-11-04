@@ -1,7 +1,7 @@
 import dotenv
 from services.chat_services.tool_func import get_frame_road, get_info_road
 from langgraph.prebuilt import create_react_agent
-from langchain_google_genai import ChatGoogleGenerativeAI
+from core.config import setting_chatbot
 from langgraph.checkpoint.memory import InMemorySaver
 from schemas.ChatResponse import ChatResponse
 from utils.chatbot_utils import pre_model_hook
@@ -28,8 +28,7 @@ dotenv.load_dotenv()
 class ChatBotAgent:
     def __init__(self):
         self.prompt = prompt
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash",
-                                          temperature=0.6)
+        self.llm = setting_chatbot.LLM
         self.checkpointer = InMemorySaver()
         self.agent = create_react_agent(model= self.llm, 
                                         tools= [get_frame_road, get_info_road], 
@@ -38,7 +37,7 @@ class ChatBotAgent:
                                         pre_model_hook= pre_model_hook,
                                         checkpointer= self.checkpointer)
 
-
+    
     async def get_response(self, user_input: str, id: int) -> dict:
         """Lấy phản hồi từ Agent dựa trên đầu vào của người dùng.
 
@@ -53,7 +52,7 @@ class ChatBotAgent:
         config = {"configurable": {"thread_id": f"{id}"}}
         response = await self.agent.ainvoke(
             {"messages": [{"role": "user", "content": user_input}]},
-            config
+            config = config
         )
         return response['structured_response'].model_dump()
 
@@ -62,5 +61,5 @@ class ChatBotAgent:
 if __name__ == "__main__":
     chat = ChatBotAgent()
     res = chat.get_response("cho tôi xin thông tin về Văn Phú và Văn Quán, cả ảnh nữa nhé", id= 1)
-    print(len(res['image']))
+    print(res['image'])
     print(res['message'])
