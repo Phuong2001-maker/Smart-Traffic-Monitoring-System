@@ -28,6 +28,8 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import ChatPage from "./pages/ChatPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProtectedRoute from "@/modules/features/auth/guards/ProtectedRoute";
+import AdminPage from "@/pages/AdminPage";
+import { authConfig } from "@/config";
 import "./App.css";
 export default function App() {
   return (
@@ -50,6 +52,7 @@ function AppContent() {
     return !!token;
   });
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
   const hideDropdownTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -63,6 +66,7 @@ function AppContent() {
     // Clear chat data when user logs out
     clearAllChatData();
     setAuthed(false);
+    setIsAdmin(false);
     setShowUserDropdown(false);
     navigate("/login", { replace: true });
   };
@@ -83,6 +87,36 @@ function AppContent() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showUserDropdown]);
+
+  // Fetch current user to determine admin role
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        if (!authed) {
+          setIsAdmin(false);
+          return;
+        }
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+          setIsAdmin(false);
+          return;
+        }
+        const res = await fetch(`${authConfig.ME_URL}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
+        });
+        if (!res.ok) {
+          setIsAdmin(false);
+          return;
+        }
+        const data = await res.json();
+        setIsAdmin(data?.role_id === 0);
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+    fetchMe();
+  }, [authed]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-slate-900 dark:to-blue-900">
@@ -210,6 +244,16 @@ function AppContent() {
                   );
                 }}
               >
+                {isAdmin && (
+                  <a
+                    href="/admin"
+                    className="w-full flex items-center px-4 py-2.5 text-gray-800 dark:text-gray-200 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 dark:hover:from-gray-700 dark:hover:to-gray-700 text-sm font-semibold transition-all"
+                    onClick={() => setShowUserDropdown(false)}
+                  >
+                    <span className="h-2 w-2 rounded-full bg-green-500 mr-3" />
+                    Trang Admin
+                  </a>
+                )}
                 <a
                   href="/profile"
                   className="w-full flex items-center px-4 py-2.5 text-gray-800 dark:text-gray-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-gray-700 dark:hover:to-gray-700 text-sm font-semibold transition-all"
@@ -265,6 +309,7 @@ function AppContent() {
           <Route path="/analys" element={<AnalyticsPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Route>
         <Route
           path="*"
