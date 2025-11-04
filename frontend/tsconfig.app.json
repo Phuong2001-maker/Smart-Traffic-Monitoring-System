@@ -23,6 +23,10 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
+    // Silence the deprecation warning about `baseUrl` for TS 6 -> 7 migration.
+    // See: https://aka.ms/ts6
+    "ignoreDeprecations": "6.0",
+
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
