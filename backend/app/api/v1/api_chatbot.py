@@ -3,25 +3,22 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from schemas.ChatRequest import ChatRequest 
 from schemas.ChatResponse import ChatResponse
 from services.chat_services.ChatBotAgent import ChatBotAgent
-from utils.jwt_handler import get_current_user, get_user_by_token, extract_token_from_websocket
-from fastapi import Depends, status
-from db.base import AsyncSessionLocal
+from utils.jwt_handler import get_current_user, get_current_user_ws
+from fastapi import Depends
 
 
 router = APIRouter()
 
 @router.on_event("startup")
 def start_up():
-    print("Đã khởi tạo Agent")
     if not hasattr(state, 'agent') or state.agent is None:
-        print("Đang khởi tạo Agent...")
+        print("Đang khởi tạo Chat Agent...")
         try:
             state.agent = ChatBotAgent()
-            print("Khởi tạo Agent thành công")
+            print("Khởi tạo Chat Agent thành công")
         except Exception as e:
-            print(f"Không thể khởi tạo Agent: {e}")
+            print(f"Không thể khởi tạo Chat Agent: {e}")
             state.agent = None
-
 
 @router.post(
     path='/chat',
@@ -29,12 +26,12 @@ def start_up():
     summary="Chat với AI Assistant",
     description="API gửi tin nhắn tới AI Chatbot và nhận phản hồi. AI có thể trả lời về giao thông, cung cấp hình ảnh và thông tin liên quan. Yêu cầu JWT authentication."
 )
-async def chat(request: ChatRequest, current_user=Depends(get_current_user)):
+async def chat(request: ChatRequest, current_user = Depends(get_current_user)):
     data = await state.agent.get_response(request.message, id= current_user.id)
     return ChatResponse(
         message=data["message"],
         image=data["image"]
-    )
+    )   
     
 @router.post(
     path='/chat_no_auth',
@@ -43,21 +40,25 @@ async def chat(request: ChatRequest, current_user=Depends(get_current_user)):
     description="API gửi tin nhắn tới AI Chatbot KHÔNG yêu cầu authentication. Dùng cho demo hoặc public access. Mặc định sử dụng user_id = 1."
 )
 async def chat_no_auth(request: ChatRequest):
-    data = await state.agent.get_response(request.message, id= 1)
+    data = await state.agent.get_response(request.message, id= 9999)
     return ChatResponse(
         message=data["message"],
         image=data["image"]
     )
     
-    
-
 @router.websocket(
     "/ws/chat",
     name="WebSocket Chat"
 )
-async def websocket_chat(websocket: WebSocket):
+async def websocket_chat(
+    websocket: WebSocket,
+    current_user = Depends(get_current_user_ws)
+):
     """
     WebSocket endpoint cho AI ChatBot Agent.
+    
+    Args:
+        current_user: User đã được xác thực (tự động inject bởi FastAPI)
     
     Flow:
     - Client gửi JSON: {"message": "..."}
@@ -68,22 +69,6 @@ async def websocket_chat(websocket: WebSocket):
     """
     await websocket.accept()
     
-    # Lấy token từ WebSocket connection
-    token = extract_token_from_websocket(websocket)
-    
-    if not token:
-        await websocket.send_json({"detail": "Unauthorized — missing or invalid token"})
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
-    
-    # Xác thực token
-    async with AsyncSessionLocal() as db:
-        user = await get_user_by_token(token, db)
-        if not user:
-            await websocket.send_json({"detail": "Unauthorized — missing or invalid token"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            return
-    
     try:
         while True:
             data = await websocket.receive_json()
@@ -92,8 +77,7 @@ async def websocket_chat(websocket: WebSocket):
                 await websocket.send_json({"message": "Bạn chưa nhập tin nhắn.", "image": None})
                 continue
 
-            # get_response is async, must be awaited directly
-            response = await state.agent.get_response(user_message, id=user.id)
+            response = await state.agent.get_response(user_message, id=current_user.id)
             await websocket.send_json({
                 "message": response["message"],
                 "image": response["image"]
