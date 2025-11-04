@@ -140,6 +140,6 @@ async def get_user_by_token(token: str, db: AsyncSession) -> Optional[User]:
     email = payload.get("sub")
     if email is None:
         return None
-    result = await db.execute(select(User).where(User.username == email))
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar()
     return user
