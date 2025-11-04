@@ -72,20 +72,77 @@ def decode_access_token(token: str) -> dict|None:
     except Exception:
         return None
 
+# async def get_current_user(
+#     token: Optional[str] = Depends(oauth2_scheme),
+#     db: AsyncSession = Depends(get_db)
+# ) -> User:
+#     """
+#     HTTP-only dependency: xác thực qua OAuth2 Bearer token trong Authorization header.
+#     - Không fallback cookie hoặc query params cho HTTP endpoints.
+#     - Trả về 401 nếu không có hoặc token không hợp lệ.
+#     """
+#     # Yêu cầu bắt buộc Bearer token trong Authorization header
+#     if not token:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Token không hợp lệ hoặc không tồn tại.",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+    
+#     user = await get_user_by_token(token, db)
+#     if not user:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Token không hợp lệ hoặc user không tồn tại.",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+#     return user
+
 async def get_current_user(
-    token: Optional[str] = Depends(oauth2_scheme),
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
-    HTTP-only dependency: xác thực qua OAuth2 Bearer token trong Authorization header.
-    - Không fallback cookie hoặc query params cho HTTP endpoints.
-    - Trả về 401 nếu không có hoặc token không hợp lệ.
+    HTTP dependency linh hoạt: chấp nhận token từ nhiều nguồn.
+    
+    Thứ tự ưu tiên:
+    1. Authorization header (Bearer token)
+    2. Cookie (access_token)
+    3. Query parameter (?token=...)
+    
+    ⚠️ LƯU Ý BẢO MẬT:
+    - Query params có thể bị ghi log vào server/proxy logs → rủi ro lộ token
+    - Cookies yêu cầu cấu hình CORS/SameSite đúng
+    - Authorization header là phương thức an toàn nhất cho API
+    
+    Sử dụng khi:
+    - Cần hỗ trợ nhiều client types (browser, mobile, desktop)
+    - Frontend không thể đặt Authorization header dễ dàng
+    - Cần backward compatibility với legacy systems
+    
+    Ví dụ sử dụng:
+    ```python
+    @router.get("/profile")
+    async def get_profile(user: User = Depends(get_current_user_flexible)):
+        return {"email": user.email, "username": user.username}
+    ```
+    
+    Args:
+        request: FastAPI Request object
+        db: Database session
+        
+    Returns:
+        User: Authenticated user object
+        
+    Raises:
+        HTTPException: 401 nếu token không tồn tại hoặc không hợp lệ
     """
-    # Yêu cầu bắt buộc Bearer token trong Authorization header
+    token = extract_token(request)
+    
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token không hợp lệ hoặc không tồn tại.",
+            detail="Token không hợp lệ hoặc không tồn tại. Vui lòng cung cấp token qua Authorization header, cookie hoặc query parameter.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
