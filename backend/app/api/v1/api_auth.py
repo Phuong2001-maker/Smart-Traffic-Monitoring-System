@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import OAuth2PasswordRequestForm  
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -7,6 +7,7 @@ from schemas.user import UserCreate, UserUpdate, UserOut
 from core.security import hash_password, verify_password
 from db.base import get_db
 from utils.jwt_handler import create_access_token, get_current_user
+from core.config import settings_server
 from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/auth")
@@ -39,7 +40,8 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
 )
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), 
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    response: Response = None,
 ):
     """
     OAuth2 compatible token login, get an access token for future requests.
@@ -63,6 +65,27 @@ async def login(
         )
     
     token = create_access_token({"sub": user_db.username})
+
+    # Set HttpOnly cookie for browsers (useful for WebSocket auth)
+    try:
+        if response is not None:
+            # Expiry in seconds
+            max_age = 60 * 60 * 24 * settings_server.ACCESS_TOKEN_EXPIRE_DAYS
+            # Note: For local HTTP development, secure=False. In production (HTTPS), set secure=True and SameSite=None
+            response.set_cookie(
+                key="access_token",
+                value=token,
+                httponly=True,
+                max_age=max_age,
+                expires=max_age,
+                samesite="lax",
+                secure=False,
+                path="/",
+            )
+    except Exception:
+        # If setting cookie fails, still return token in body
+        pass
+
     return {"access_token": token, "token_type": "bearer"}
 
 @router.get(
