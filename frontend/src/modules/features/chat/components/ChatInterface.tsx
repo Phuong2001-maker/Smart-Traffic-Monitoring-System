@@ -8,6 +8,17 @@ import {
   clearChatDraft,
 } from "@/utils/chatStorage";
 import { apiConfig, authConfig, endpoints } from "@/config";
+// Helper: check if an URL points to the same API origin (handles localhost vs 127.0.0.1)
+function isSameApiOrigin(url: string): boolean {
+  try {
+    const target = new URL(url, window.location.origin);
+    const apiBase = new URL(apiConfig.API_HTTP_BASE);
+    return target.origin === apiBase.origin;
+  } catch {
+    return false;
+  }
+}
+
 // Component fetch và hiển thị ảnh từ URL API bằng Authorization header
 const ChatImageFromUrl = ({ url }: { url: string }) => {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -21,7 +32,7 @@ const ChatImageFromUrl = ({ url }: { url: string }) => {
           typeof window !== "undefined"
             ? localStorage.getItem(authConfig.TOKEN_KEY)
             : null;
-        const isLocalApi = url.startsWith(apiConfig.API_HTTP_BASE);
+        const isLocalApi = isSameApiOrigin(url);
         const headers: HeadersInit = {};
         if (token && isLocalApi) {
           headers["Authorization"] = `Bearer ${token}`;
@@ -116,7 +127,7 @@ const markdownComponents: Components = {
   },
   img: (props) => {
     const src = (props as { src?: string }).src;
-    if (src && src.startsWith(apiConfig.API_HTTP_BASE)) {
+    if (src && isSameApiOrigin(src)) {
       return <ChatImageFromUrl url={src} />;
     }
     return (
