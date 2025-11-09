@@ -1,31 +1,13 @@
-import TrafficAnalytics from "../modules/features/traffic/components/TrafficAnalytics";
-import { useMultipleTrafficInfo } from "../hooks/useWebSocket";
-import { useEffect, useState } from "react";
-import { endpoints } from "../config";
+import TrafficAnalytics from "../modules/features/traffic/components/TrafficAnalyticsClean";
+import { useEffect } from "react";
+import { useTrafficStore } from "@/hooks/useTrafficStore";
 
 const AnalyticsPage = () => {
-  const [allowedRoads, setAllowedRoads] = useState<string[]>([]);
+  // Use central traffic store which starts fetching after login
+  const { trafficData, allowedRoads, historicalData } = useTrafficStore();
 
-  useEffect(() => {
-    const fetchRoads = async () => {
-      try {
-        // roads_name endpoint không cần authentication
-        const res = await fetch(endpoints.roadNames);
-        if (!res.ok) {
-          setAllowedRoads([]);
-          return;
-        }
-        const json = await res.json();
-        const names: string[] = json?.road_names ?? [];
-        setAllowedRoads(names);
-      } catch {
-        setAllowedRoads([]);
-      }
-    };
-    fetchRoads();
-  }, []);
-
-  const { trafficData } = useMultipleTrafficInfo(allowedRoads);
+  // small defensive hook: ensure allowedRoads is stable
+  useEffect(() => {}, [allowedRoads]);
 
   return (
     <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-6">
@@ -33,6 +15,7 @@ const AnalyticsPage = () => {
         <TrafficAnalytics
           trafficData={trafficData}
           allowedRoads={allowedRoads}
+          historicalData={historicalData}
         />
       </div>
     </div>

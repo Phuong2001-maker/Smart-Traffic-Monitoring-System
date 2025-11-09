@@ -31,6 +31,7 @@ import ProtectedRoute from "@/modules/features/auth/guards/ProtectedRoute";
 import AdminPage from "@/pages/AdminPage";
 import { authConfig } from "@/config";
 import "./App.css";
+import { TrafficProvider } from "@/hooks/useTrafficStore";
 export default function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
@@ -292,30 +293,32 @@ function AppContent() {
         </div>
       </div>
       {/* Main Content */}
-      <Routes>
-        <Route
-          path="/login"
-          element={
-            <LoginPage
-              onLoginSuccess={handleLoginSuccess}
-              onRegisterSuccess={handleRegisterSuccess}
-              showRegister={showRegister}
-              setShowRegister={setShowRegister}
-            />
-          }
-        />
-        <Route element={<ProtectedRoute />}>
-          <Route path="/home" element={<TrafficDashboard />} />
-          <Route path="/analys" element={<AnalyticsPage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/admin" element={<AdminPage />} />
-        </Route>
-        <Route
-          path="*"
-          element={<Navigate to={authed ? "/home" : "/login"} replace />}
-        />
-      </Routes>
+      <TrafficProvider>
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <LoginPage
+                onLoginSuccess={handleLoginSuccess}
+                onRegisterSuccess={handleRegisterSuccess}
+                showRegister={showRegister}
+                setShowRegister={setShowRegister}
+              />
+            }
+          />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/home" element={<TrafficDashboard />} />
+            <Route path="/analys" element={<AnalyticsPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin" element={<AdminPage />} />
+          </Route>
+          <Route
+            path="*"
+            element={<Navigate to={authed ? "/home" : "/login"} replace />}
+          />
+        </Routes>
+      </TrafficProvider>
       <Toaster position="top-right" richColors />
     </div>
   );
