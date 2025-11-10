@@ -22,6 +22,28 @@ def convert_frame_to_byte(img: np.array) -> bytes:
 def avg_none_zero(lst: list) -> int:
     non_zero = [x for x in lst if x != 0]
     return sum(non_zero) // len(non_zero) if non_zero else 0
+
+def avg_none_zero_batch(
+    car_counts: list,
+    car_speeds: list,
+    motor_counts: list,
+    motor_speeds: list,
+):
+    """Tính trung bình bỏ qua 0 cho 4 list cùng lúc.
+    Trả về tuple (count_car_avg, speed_car_avg, count_motor_avg, speed_motor_avg).
+    Làm gọn code và giảm overhead gọi hàm lặp đi lặp lại.
+    """
+    # Sử dụng list comprehension nhanh, tránh tạo numpy array không cần thiết
+    def _avg(lst):
+        non_zero = [x for x in lst if x > 1]
+        return (sum(non_zero) // len(non_zero)) if non_zero else 0
+
+    return (
+        _avg(car_counts),
+        _avg(car_speeds),
+        _avg(motor_counts),
+        _avg(motor_speeds),
+    )
     
 def log(names : str, shared_data : dict) -> str:
     """Hàm in ra log thông tin các processing

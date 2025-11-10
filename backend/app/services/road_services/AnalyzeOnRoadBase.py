@@ -65,6 +65,8 @@ class AnalyzeOnRoadBase:
 
         self.region = region
         self.region_pts = region.reshape((-1, 1, 2))
+        # Bounding box (x, y, w, h) for fast pre-filtering before polygon test
+        self.region_bbox = cv2.boundingRect(self.region_pts)
 
         self.show = show
         self.path_video = path_video
@@ -105,7 +107,7 @@ class AnalyzeOnRoadBase:
         self.speeds = {}
         self.boxes = None
         self.classes = None
-
+        self.ids_old = set()
     @abstractmethod
     def update_for_frame(self):
         pass
@@ -129,11 +131,18 @@ class AnalyzeOnRoadBase:
         if self.delta_time >= self.time_step:
             self.time_pre = time_now
 
-            # Tính toán trung bình các giá trị - deque tự động giới hạn size
-            self.count_car_display = avg_none_zero(self.list_count_car)
-            self.speed_car_display = avg_none_zero(self.list_speed_car)
-            self.count_motor_display = avg_none_zero(self.list_count_motor)
-            self.speed_motor_display = avg_none_zero(self.list_speed_motor)
+            # Tính toán trung bình các giá trị theo chu kỳ (bỏ qua 0)
+            (
+                self.count_car_display,
+                self.speed_car_display,
+                self.count_motor_display,
+                self.speed_motor_display,
+            ) = avg_none_zero_batch(
+                self.list_count_car,
+                self.list_speed_car,
+                self.list_count_motor,
+                self.list_speed_motor,
+            )
 
             # Cập nhật thông tin phương tiện vào info_dict
             self.update_for_vehicle()
@@ -143,6 +152,7 @@ class AnalyzeOnRoadBase:
             self.list_count_motor.clear()
             self.list_speed_car.clear()
             self.list_speed_motor.clear()
+            self.ids_old.clear()
 
     def process_single_frame(self, frame_input):
         """Hàm này xử lý từng frame một
@@ -153,10 +163,8 @@ class AnalyzeOnRoadBase:
             # Tránh copy toàn bộ frame, chỉ tạo view
             self.frame_output = frame_input
 
-            # Sử dụng view thay vì copy - ascontiguousarray để đảm bảo memory layout
-            self.frame_predict = np.ascontiguousarray(
-                self.frame_output[self.roi_y_start:, self.roi_x_start:]
-            )
+            # Sử dụng view trực tiếp ROI (tránh copy thừa); copy sẽ được thực hiện khi đưa vào speed_tool
+            self.frame_predict = self.frame_output[self.roi_y_start:, self.roi_x_start:]
 
             # Cần dùng bản copy để tránh công cụ ghi đè label lên ảnh đầu vào
             self.speed_tool.process(self.frame_predict.copy())
@@ -178,28 +186,47 @@ class AnalyzeOnRoadBase:
 
     def post_processing(self):
         if self.speed_tool.track_data is not None:
-            # Batch convert to numpy một lần thay vì nhiều lần
+            # Batch convert to numpy một lần (giảm nhiều lần truy cập thuộc tính)
             track_data = self.speed_tool.track_data
-            self.speeds = self.speed_tool.spd
-            self.ids = track_data.id.cpu().numpy().astype(np.int32)
-            self.classes = track_data.cls.cpu().numpy().astype(np.int32)
-            self.boxes = track_data.xyxy.cpu().numpy().astype(np.int32)
+            speeds_dict = self.speed_tool.spd  # dict: id -> speed
 
-            car_mask = (self.classes == 0)
-            motor_mask = (self.classes == 1)
+            ids = track_data.id.cpu().numpy().astype(np.int32)
+            classes = track_data.cls.cpu().numpy().astype(np.int32)
+            boxes = track_data.xyxy.cpu().numpy().astype(np.int32)
 
-            count_car = np.sum(car_mask)
-            count_motor = np.sum(motor_mask)
+            # Lưu vào thuộc tính phục vụ vẽ
+            self.speeds = speeds_dict
+            self.ids = ids
+            self.classes = classes
+            self.boxes = boxes
 
-            self.list_count_car.append(int(count_car))
-            self.list_count_motor.append(int(count_motor))
+            # Đếm mật độ tức thời
+            car_mask = (classes == 0)
+            motor_mask = (classes == 1)
+            self.list_count_car.append(int(np.sum(car_mask)))
+            self.list_count_motor.append(int(np.sum(motor_mask)))
 
-            car_ids = self.ids[car_mask]
-            motor_ids = self.ids[motor_mask]
+            car_ids = ids[car_mask]
+            motor_ids = ids[motor_mask]
+            ids_old = self.ids_old
 
-            car_speeds = [self.speeds[tid] for tid in car_ids if tid in self.speeds]
-            motor_speeds = [self.speeds[tid] for tid in motor_ids if tid in self.speeds]
+            def collect_speeds(new_ids: np.ndarray):
+                if new_ids.size == 0:
+                    return []
+                if ids_old:
+                    mask_new = ~np.isin(new_ids, list(ids_old), assume_unique=False)
+                    new_ids = new_ids[mask_new]
+                if new_ids.size == 0:
+                    return []
+                spd_arr = np.array([speeds_dict.get(int(i), 0.0) for i in new_ids], dtype=np.float32)
+                valid_mask = spd_arr > 0.0
+                if not np.any(valid_mask):
+                    return []
+                ids_old.update(new_ids[valid_mask].tolist())
+                return spd_arr[valid_mask].tolist()
 
+            car_speeds = collect_speeds(car_ids)
+            motor_speeds = collect_speeds(motor_ids)
             if car_speeds:
                 self.list_speed_car.extend(car_speeds)
             if motor_speeds:
@@ -223,18 +250,22 @@ class AnalyzeOnRoadBase:
                 cx_adj = cx + self.roi_x_start
                 cy_adj = cy + self.roi_y_start
 
-                # Tìm các điểm nằm trong vùng ROI
-                valid_indices = []
-                for idx in range(len(cx_adj)):
-                    result = cv2.pointPolygonTest(
-                        self.region_pts,
-                        (int(cx_adj[idx]), int(cy_adj[idx])),
-                        False
-                    )
-                    if result >= 0:
-                        valid_indices.append(idx)
-
-                valid_indices = np.array(valid_indices)
+                # Tìm các điểm nằm trong vùng ROI: prefilter bằng bounding box để giảm số lần pointPolygonTest
+                bx, by, bw, bh = self.region_bbox
+                in_bbox_mask = (
+                    (cx_adj >= bx) & (cx_adj < bx + bw) &
+                    (cy_adj >= by) & (cy_adj < by + bh)
+                )
+                candidate_idx = np.nonzero(in_bbox_mask)[0]
+                valid_list = []
+                region_pts_local = self.region_pts  # local ref
+                for idx in candidate_idx:
+                    if cv2.pointPolygonTest(region_pts_local, (int(cx_adj[idx]), int(cy_adj[idx])), False) >= 0:
+                        valid_list.append(idx)
+                if valid_list:
+                    valid_indices = np.asarray(valid_list, dtype=np.int32)
+                else:
+                    valid_indices = np.empty((0,), dtype=np.int32)
 
                 for idx in valid_indices:
                     track_id = self.ids[idx]
@@ -252,8 +283,8 @@ class AnalyzeOnRoadBase:
                                self.font, self.font_scale, color, self.font_thickness)
                     cv2.circle(self.frame_predict, (cx_local, cy_local), 5, color, -1)
 
-            # Gắn lại vùng được cắt để predict lại vào frame ban đầu
-            self.frame_output[130:, 50:] = self.frame_predict
+            # Gắn lại vùng được cắt để predict lại vào frame ban đầu 
+            self.frame_output[self.roi_y_start:, self.roi_x_start:] = self.frame_predict
             cv2.polylines(self.frame_output, [self.region_pts],
                          isClosed=True, color=self.color_region, thickness=4)
 
@@ -336,13 +367,13 @@ class AnalyzeOnRoadBase:
 #************************************************************************ Script for testing *******************************************************
 if __name__ == "__main__":
     # Example usage
-    path_video = settings_metric_transport.path_videos[1]
-    meter_per_pixel = settings_metric_transport.meter_per_pixels[1]
+    path_video = settings_metric_transport.PATH_VIDEOS[3]
+    meter_per_pixel = settings_metric_transport.METER_PER_PIXELS[3]
 
     analyzer = AnalyzeOnRoadBase(
         path_video=path_video,
         meter_per_pixel=meter_per_pixel,
-        region=settings_metric_transport.regions[1],
+        region=settings_metric_transport.REGIONS[3],
         show=True
     )
 
