@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { endpoints } from "@/config";
 import { useMultipleTrafficInfo } from "./useWebSocket";
 import { TrafficContext } from "./TrafficContext";
@@ -44,6 +44,9 @@ export function TrafficProvider({ children }: { children: React.ReactNode }) {
 
   // Build and maintain historical data capped to MAX_HISTORY
   const historyRef = useRef<HistoricalDataPoint[]>([]);
+  const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>(
+    []
+  );
   const lastTrafficRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
@@ -74,11 +77,10 @@ export function TrafficProvider({ children }: { children: React.ReactNode }) {
     });
 
     historyRef.current = [...historyRef.current, point].slice(-MAX_HISTORY);
+    // publish a new array reference so consumers re-render
+    setHistoricalData([...historyRef.current]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(trafficData), JSON.stringify(allowedRoads)]);
-
-  // No dependency needed: reading ref is synchronous and changes don't trigger re-render.
-  const historicalData = useMemo(() => historyRef.current, []);
 
   const value: TrafficStore = {
     allowedRoads,
