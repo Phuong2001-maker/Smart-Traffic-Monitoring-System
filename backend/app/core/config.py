@@ -62,3 +62,31 @@ settings_metric_transport = SettingMetricTransport()
 settings_chat_bot = SettingChatBot()
 settings_network = SettingNetwork()
 setting_chatbot = SettingChatBot()
+
+# ================= Traffic Thresholds (per-road) =================
+# v: average speed threshold (km/h) - >= v => fast, else slow
+# c1: vehicle count threshold for busy
+# c2: vehicle count threshold for congested
+
+from typing import Dict, TypedDict
+
+
+class RoadThreshold(TypedDict):
+    v: int
+    c1: int
+    c2: int
+
+
+TRAFFIC_THRESHOLDS: Dict[str, RoadThreshold] = {
+    "Đường Láng": {"v": 13, "c1": 17, "c2": 26},
+    "Ngã Tư Sở": {"v": 17, "c1": 45, "c2": 57},
+    "Nguyễn Trãi": {"v": 30, "c1": 25, "c2": 35},
+    "Văn Quán": {"v": 10, "c1": 10, "c2": 17},
+    "Văn Phú": {"v": 15, "c1": 18, "c2": 26},
+}
+
+DEFAULT_THRESHOLD: RoadThreshold = {"v": 15, "c1": 15, "c2": 25}
+
+
+def get_threshold_for_road(road_name: str) -> RoadThreshold:
+    return TRAFFIC_THRESHOLDS.get(road_name, DEFAULT_THRESHOLD)

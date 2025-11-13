@@ -66,11 +66,36 @@ const VideoMonitor = ({
         text: "Không rõ",
       };
 
-    // Lấy ngưỡng cho tuyến đường cụ thể
+    // Prefer backend-provided classification when available
+    const densityFromBackend = (data as any)?.density_status;
+    if (densityFromBackend) {
+      if (densityFromBackend === "Tắc nghẽn")
+        return {
+          status: "congested",
+          color: "red",
+          icon: AlertTriangle,
+          text: densityFromBackend,
+        };
+      if (densityFromBackend === "Đông đúc")
+        return {
+          status: "busy",
+          color: "yellow",
+          icon: Clock,
+          text: densityFromBackend,
+        };
+      if (densityFromBackend === "Thông thoáng")
+        return {
+          status: "clear",
+          color: "green",
+          icon: CheckCircle,
+          text: densityFromBackend,
+        };
+    }
+
+    // Fallback to previous local thresholds if backend not providing
     const threshold = getThresholdForRoad(roadName);
     const totalVehicles = data.count_car + data.count_motor;
 
-    // Phân loại dựa trên ngưỡng của từng tuyến đường
     if (totalVehicles > threshold.c2)
       return {
         status: "congested",
@@ -92,12 +117,20 @@ const VideoMonitor = ({
     const data = trafficData[roadName];
     if (!data) return { speedText: "Không rõ", speedColor: "gray" };
 
+    const speedFromBackend = (data as any)?.speed_status;
+    if (speedFromBackend) {
+      if (speedFromBackend === "Nhanh chóng")
+        return { speedText: "Nhanh chóng", speedColor: "green" };
+      if (speedFromBackend === "Chậm chạp")
+        return { speedText: "Chậm chạp", speedColor: "orange" };
+    }
+
+    // Fallback
     const threshold = getThresholdForRoad(roadName);
     const avgSpeed = (data.speed_car + data.speed_motor) / 2;
 
-    if (avgSpeed >= threshold.v) {
+    if (avgSpeed >= threshold.v)
       return { speedText: "Nhanh chóng", speedColor: "green" };
-    }
     return { speedText: "Chậm chạp", speedColor: "orange" };
   };
 

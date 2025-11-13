@@ -141,11 +141,51 @@ const VideoModal = ({
                     {/* Đánh giá về số lượng phương tiện */}
                     <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
                       {(() => {
+                        // Prefer backend-provided label
+                        const densityFromBackend = (trafficData as any)
+                          ?.density_status;
+                        if (densityFromBackend) {
+                          if (densityFromBackend === "Tắc nghẽn") {
+                            return (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                  Mật độ:
+                                </span>
+                                <span className="font-medium text-xs sm:text-sm bg-red-100 dark:bg-red-900 px-2 py-1 rounded text-red-700 dark:text-red-300">
+                                  {densityFromBackend}
+                                </span>
+                              </div>
+                            );
+                          }
+                          if (densityFromBackend === "Đông đúc") {
+                            return (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                  Mật độ:
+                                </span>
+                                <span className="font-medium text-xs sm:text-sm bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded text-yellow-700 dark:text-yellow-300">
+                                  {densityFromBackend}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-600 dark:text-gray-400">
+                                Mật độ:
+                              </span>
+                              <span className="font-medium text-xs sm:text-sm bg-green-100 dark:bg-green-900 px-2 py-1 rounded text-green-700 dark:text-green-300">
+                                {densityFromBackend}
+                              </span>
+                            </div>
+                          );
+                        }
+
+                        // Fallback: compute locally if backend not available
                         const threshold = getThresholdForRoad(roadName);
                         const totalVehicles =
                           (trafficData?.count_car || 0) +
                           (trafficData?.count_motor || 0);
-
                         if (totalVehicles > threshold.c2) {
                           return (
                             <div className="flex items-center justify-between">
@@ -168,30 +208,56 @@ const VideoModal = ({
                               </span>
                             </div>
                           );
-                        } else {
-                          return (
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-600 dark:text-gray-400">
-                                Mật độ:
-                              </span>
-                              <span className="font-medium text-xs sm:text-sm bg-green-100 dark:bg-green-900 px-2 py-1 rounded text-green-700 dark:text-green-300">
-                                Thông thoáng
-                              </span>
-                            </div>
-                          );
                         }
+                        return (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                              Mật độ:
+                            </span>
+                            <span className="font-medium text-xs sm:text-sm bg-green-100 dark:bg-green-900 px-2 py-1 rounded text-green-700 dark:text-green-300">
+                              Thông thoáng
+                            </span>
+                          </div>
+                        );
                       })()}
                     </div>
 
                     {/* Đánh giá về tốc độ */}
                     <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
                       {(() => {
+                        const speedFromBackend = (trafficData as any)
+                          ?.speed_status;
+                        if (speedFromBackend) {
+                          if (speedFromBackend === "Nhanh chóng") {
+                            return (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                  Vận tốc:
+                                </span>
+                                <span className="font-medium text-xs sm:text-sm bg-green-100 dark:bg-green-900 px-2 py-1 rounded text-green-700 dark:text-green-300">
+                                  {speedFromBackend}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-600 dark:text-gray-400">
+                                Vận tốc:
+                              </span>
+                              <span className="font-medium text-xs sm:text-sm bg-orange-100 dark:bg-orange-900 px-2 py-1 rounded text-orange-700 dark:text-orange-300">
+                                {speedFromBackend}
+                              </span>
+                            </div>
+                          );
+                        }
+
+                        // Fallback
                         const threshold = getThresholdForRoad(roadName);
                         const avgSpeed =
                           ((trafficData?.speed_car || 0) +
                             (trafficData?.speed_motor || 0)) /
                           2;
-
                         if (avgSpeed >= threshold.v) {
                           return (
                             <div className="flex items-center justify-between">
@@ -203,18 +269,17 @@ const VideoModal = ({
                               </span>
                             </div>
                           );
-                        } else {
-                          return (
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-600 dark:text-gray-400">
-                                Vận tốc:
-                              </span>
-                              <span className="font-medium text-xs sm:text-sm bg-orange-100 dark:bg-orange-900 px-2 py-1 rounded text-orange-700 dark:text-orange-300">
-                                Chậm chạp
-                              </span>
-                            </div>
-                          );
                         }
+                        return (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                              Vận tốc:
+                            </span>
+                            <span className="font-medium text-xs sm:text-sm bg-orange-100 dark:bg-orange-900 px-2 py-1 rounded text-orange-700 dark:text-orange-300">
+                              Chậm chạp
+                            </span>
+                          </div>
+                        );
                       })()}
                     </div>
                   </div>

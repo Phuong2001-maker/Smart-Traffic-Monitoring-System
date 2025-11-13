@@ -18,7 +18,6 @@ import {
   useMultipleFrameStreams,
 } from "../../../../hooks/useWebSocket";
 import { endpoints } from "../../../../config";
-import { getThresholdForRoad } from "../../../../config/trafficThresholds";
 
 // Import types from the WebSocket hook
 type VehicleData = {
@@ -76,33 +75,33 @@ const TrafficDashboard = () => {
   const getTrafficStatus = (roadName: string) => {
     const data = trafficData[roadName] as VehicleData | undefined;
     if (!data) return { status: "unknown", color: "gray", icon: Clock };
-
-    // Lấy ngưỡng cho tuyến đường cụ thể
-    const threshold = getThresholdForRoad(roadName);
-
-    const totalVehicles = data.count_car + data.count_motor;
-
-    // Phân loại dựa trên ngưỡng của từng tuyến đường
-    if (totalVehicles > threshold.c2) {
-      return { status: "congested", color: "red", icon: AlertTriangle };
+    // Prefer backend-provided classification when available
+    const densityFromBackend = (data as any)?.density_status;
+    if (densityFromBackend) {
+      if (densityFromBackend === "Tắc nghẽn")
+        return { status: "congested", color: "red", icon: AlertTriangle };
+      if (densityFromBackend === "Đông đúc")
+        return { status: "busy", color: "yellow", icon: Clock };
+      if (densityFromBackend === "Thông thoáng")
+        return { status: "clear", color: "green", icon: CheckCircle };
     }
-    if (totalVehicles > threshold.c1) {
-      return { status: "busy", color: "yellow", icon: Clock };
-    }
-    return { status: "clear", color: "green", icon: CheckCircle };
+
+    // Fallback: unknown when backend doesn't provide classification
+    return { status: "unknown", color: "gray", icon: Clock };
   };
 
   const getSpeedStatus = (roadName: string) => {
     const data = trafficData[roadName] as VehicleData | undefined;
     if (!data) return { speedText: "Không rõ", speedColor: "gray" };
-
-    const threshold = getThresholdForRoad(roadName);
-    const avgSpeed = (data.speed_car + data.speed_motor) / 2;
-
-    if (avgSpeed >= threshold.v) {
-      return { speedText: "Nhanh", speedColor: "green" };
+    const speedFromBackend = (data as any)?.speed_status;
+    if (speedFromBackend) {
+      if (speedFromBackend === "Nhanh chóng")
+        return { speedText: "Nhanh chóng", speedColor: "green" };
+      if (speedFromBackend === "Chậm chạp")
+        return { speedText: "Chậm chạp", speedColor: "orange" };
     }
-    return { speedText: "Chậm", speedColor: "orange" };
+
+    return { speedText: "Không rõ", speedColor: "gray" };
   };
 
   const getStatusText = (status: string) => {

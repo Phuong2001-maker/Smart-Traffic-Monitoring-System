@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from fastapi import WebSocket, WebSocketDisconnect
 from utils.jwt_handler import get_current_user, get_current_user_ws
 from fastapi import Depends
+from utils.transport_utils import enrich_info_with_thresholds
 
 router = APIRouter()
 
@@ -87,7 +88,13 @@ async def websocket_info(
     try:
         while True:
             data = await asyncio.to_thread(v1.state.analyzer.get_info_road, road_name)
-            await websocket.send_json(data)
+            # Enrich with per-road thresholds classification when possible
+            try:
+                enriched = enrich_info_with_thresholds(data, road_name)
+            except Exception:
+                enriched = data
+
+            await websocket.send_json(enriched)
             await asyncio.sleep(1/50)
     except WebSocketDisconnect:
         pass
@@ -109,7 +116,13 @@ async def get_info_road(road_name: str):
         return JSONResponse(content={
             "Lỗi: Dữ liệu bị lỗi, kiểm tra road_services"
             }, status_code=500)
-    return JSONResponse(content=data)
+    # Enrich with per-road thresholds classification when possible
+    try:
+        enriched = enrich_info_with_thresholds(data, road_name)
+    except Exception:
+        enriched = data
+
+    return JSONResponse(content=enriched)
 
 @router.get(
     path='/frames/{road_name}',
