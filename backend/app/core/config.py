@@ -28,7 +28,8 @@ class SettingMetricTransport:
         "./video_test/Đường Láng.mp4",
     ]
 
-    METER_PER_PIXELS = [0.1,
+    METER_PER_PIXELS = [
+                        0.1,
                         0.15,
                         0.42,
                         0.15,
