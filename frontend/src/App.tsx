@@ -20,6 +20,7 @@ import {
   Home,
   BarChart3,
   Bot,
+  ShieldCheck,
 } from "lucide-react";
 import { clearAllChatData } from "@/utils/chatStorage";
 import LoginPage from "./pages/LoginPage";
@@ -120,9 +121,9 @@ function AppContent() {
   }, [authed]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-slate-900 dark:to-blue-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-zinc-100 dark:from-gray-900 dark:via-slate-900 dark:to-blue-900">
       {/* Banner */}
-      <div className="w-full flex flex-wrap items-center justify-between px-3 sm:px-6 py-3 bg-white/80 dark:bg-gray-900/90 shadow-xl border-b border-purple-200/50 dark:border-gray-800 backdrop-blur-xl sticky top-0 z-50">
+      <div className="w-full flex flex-wrap items-center justify-between px-3 sm:px-6 py-3 bg-white/90 dark:bg-gray-900/90 shadow-lg border-b border-gray-300 dark:border-gray-800 backdrop-blur-xl sticky top-0 z-50">
         <div className="flex items-center min-w-0 gap-3">
           <a
             href="/home"
@@ -251,7 +252,7 @@ function AppContent() {
                     className="w-full flex items-center px-4 py-2.5 text-gray-800 dark:text-gray-200 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 dark:hover:from-gray-700 dark:hover:to-gray-700 text-sm font-semibold transition-all"
                     onClick={() => setShowUserDropdown(false)}
                   >
-                    <span className="h-2 w-2 rounded-full bg-green-500 mr-3" />
+                    <ShieldCheck className="h-4 w-4 mr-3 text-green-600 dark:text-green-400" />
                     Trang Admin
                   </a>
                 )}

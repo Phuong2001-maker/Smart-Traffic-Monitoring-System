@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import VideoModal from "./VideoModal";
+import { getThresholdForRoad } from "../../../../config/trafficThresholds";
 
 interface VehicleData {
   count_car: number;
@@ -65,15 +66,19 @@ const VideoMonitor = ({
         text: "Không rõ",
       };
 
+    // Lấy ngưỡng cho tuyến đường cụ thể
+    const threshold = getThresholdForRoad(roadName);
     const totalVehicles = data.count_car + data.count_motor;
-    if (totalVehicles > 20)
+
+    // Phân loại dựa trên ngưỡng của từng tuyến đường
+    if (totalVehicles > threshold.c2)
       return {
         status: "congested",
         color: "red",
         icon: AlertTriangle,
         text: "Tắc nghẽn",
       };
-    if (totalVehicles > 8)
+    if (totalVehicles > threshold.c1)
       return { status: "busy", color: "yellow", icon: Clock, text: "Đông đúc" };
     return {
       status: "clear",
@@ -81,6 +86,19 @@ const VideoMonitor = ({
       icon: CheckCircle,
       text: "Thông thoáng",
     };
+  };
+
+  const getSpeedStatus = (roadName: string) => {
+    const data = trafficData[roadName];
+    if (!data) return { speedText: "Không rõ", speedColor: "gray" };
+
+    const threshold = getThresholdForRoad(roadName);
+    const avgSpeed = (data.speed_car + data.speed_motor) / 2;
+
+    if (avgSpeed >= threshold.v) {
+      return { speedText: "Nhanh chóng", speedColor: "green" };
+    }
+    return { speedText: "Chậm chạp", speedColor: "orange" };
   };
 
   const getStatusBadgeVariant = (color: string) => {
@@ -161,7 +179,7 @@ const VideoMonitor = ({
           )}
         </div>
       </CardHeader>
-      <CardContent className="px-3 sm:px-6">
+      <CardContent className="px-3 sm:px-6 max-h-[calc(100vh-12rem)] overflow-y-auto overscroll-contain">
         <div
           className={`grid gap-4 sm:gap-6 ${
             isFullscreen
@@ -174,6 +192,7 @@ const VideoMonitor = ({
               const frame = frameData[roadName];
               const data = trafficData[roadName];
               const { color, icon: Icon, text } = getTrafficStatus(roadName);
+              const { speedText, speedColor } = getSpeedStatus(roadName);
               const isSelected = selectedRoad === roadName;
 
               return (
@@ -225,15 +244,34 @@ const VideoMonitor = ({
                     <h3 className="font-semibold text-sm sm:text-lg mb-2 sm:mb-3 flex items-center space-x-2">
                       <span className="truncate">{roadName}</span>
                     </h3>
-                    {/* Status */}
-                    <div className="mb-2 sm:mb-3">
+
+                    {/* Status Badges */}
+                    <div className="mb-2 sm:mb-3 flex flex-wrap gap-1.5 sm:gap-2">
+                      {/* Mật độ Badge */}
                       <Badge
                         variant={getStatusBadgeVariant(color)}
-                        className="flex items-center space-x-1 sm:space-x-2 text-xs"
+                        className="flex items-center space-x-1 text-xs"
                       >
-                        <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
-                        <span className="text-xs">{text}</span>
+                        <Icon className="h-3 w-3" />
+                        <span>{text}</span>
                       </Badge>
+
+                      {/* Tốc độ Badge */}
+                      {data && (
+                        <Badge
+                          variant={
+                            speedColor === "green" ? "default" : "secondary"
+                          }
+                          className={`flex items-center space-x-1 text-xs ${
+                            speedColor === "green"
+                              ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
+                              : "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300"
+                          }`}
+                        >
+                          <Gauge className="h-3 w-3" />
+                          <span>{speedText}</span>
+                        </Badge>
+                      )}
                     </div>
 
                     {data ? (
@@ -244,13 +282,13 @@ const VideoMonitor = ({
                             <Car className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                               Ô tô
                             </p>
-                            <p className="font-semibold text-xs sm:text-base">
+                            <p className="font-semibold text-xs sm:text-base text-gray-900 dark:text-white">
                               {data.count_car}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                               {data.speed_car.toFixed(1)} km/h
                             </p>
                           </div>
@@ -262,13 +300,13 @@ const VideoMonitor = ({
                             <Bike className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 dark:text-green-400" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                               Xe máy
                             </p>
-                            <p className="font-semibold text-xs sm:text-base">
+                            <p className="font-semibold text-xs sm:text-base text-gray-900 dark:text-white">
                               {data.count_motor}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                               {data.speed_motor.toFixed(1)} km/h
                             </p>
                           </div>

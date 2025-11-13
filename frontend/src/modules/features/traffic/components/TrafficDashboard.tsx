@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
+  Gauge,
 } from "lucide-react";
 import VideoMonitor from "../../video/components/VideoMonitor";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +18,7 @@ import {
   useMultipleFrameStreams,
 } from "../../../../hooks/useWebSocket";
 import { endpoints } from "../../../../config";
+import { getThresholdForRoad } from "../../../../config/trafficThresholds";
 
 // Import types from the WebSocket hook
 type VehicleData = {
@@ -74,12 +76,32 @@ const TrafficDashboard = () => {
     const data = trafficData[roadName] as VehicleData | undefined;
     if (!data) return { status: "unknown", color: "gray", icon: Clock };
 
+    // Lấy ngưỡng cho tuyến đường cụ thể
+    const threshold = getThresholdForRoad(roadName);
+
     const totalVehicles = data.count_car + data.count_motor;
-    if (totalVehicles > 15)
+
+    // Phân loại dựa trên ngưỡng của từng tuyến đường
+    if (totalVehicles > threshold.c2) {
       return { status: "congested", color: "red", icon: AlertTriangle };
-    if (totalVehicles > 8)
+    }
+    if (totalVehicles > threshold.c1) {
       return { status: "busy", color: "yellow", icon: Clock };
+    }
     return { status: "clear", color: "green", icon: CheckCircle };
+  };
+
+  const getSpeedStatus = (roadName: string) => {
+    const data = trafficData[roadName] as VehicleData | undefined;
+    if (!data) return { speedText: "Không rõ", speedColor: "gray" };
+
+    const threshold = getThresholdForRoad(roadName);
+    const avgSpeed = (data.speed_car + data.speed_motor) / 2;
+
+    if (avgSpeed >= threshold.v) {
+      return { speedText: "Nhanh", speedColor: "green" };
+    }
+    return { speedText: "Chậm", speedColor: "orange" };
   };
 
   const getStatusText = (status: string) => {
@@ -121,15 +143,15 @@ const TrafficDashboard = () => {
 
           {/* Traffic Status Cards */}
           {!localFullscreen && (
-            <div className="space-y-4">
-              <Card className="shadow-lg">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center space-x-2 text-lg">
+            <div className="space-y-4 w-full lg:max-w-xs lg:justify-self-end">
+              <Card className="shadow-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900">
+                <CardHeader className="py-2 bg-transparent border-b border-gray-200 dark:border-gray-700">
+                  <CardTitle className="flex items-center space-x-2 text-base text-gray-900 dark:text-white">
                     <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     <span>Tình Trạng Giao Thông</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-3 px-4 max-h-60 overflow-y-auto overscroll-contain">
                   {loading ? (
                     // Loading skeleton
                     <>
@@ -154,11 +176,8 @@ const TrafficDashboard = () => {
                   ) : (
                     <AnimatePresence>
                       {allowedRoads.map((road) => {
-                        const {
-                          status,
-                          color,
-                          icon: Icon,
-                        } = getTrafficStatus(road);
+                        const { status, color } = getTrafficStatus(road);
+                        const { speedText, speedColor } = getSpeedStatus(road);
                         const data = trafficData[road];
 
                         return (
@@ -168,16 +187,14 @@ const TrafficDashboard = () => {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
                             transition={{ duration: 0.3 }}
-                            className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer hover:shadow-md"
+                            className="flex flex-col p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-600 transition-all cursor-pointer hover:shadow-lg space-y-2"
                             onClick={() => setSelectedRoad(road)}
                           >
-                            <div className="flex items-center space-x-3">
-                              <Icon className={`h-4 w-4 text-${color}-500`} />
-                              <span className="font-medium text-sm">
+                            {/* Tên đường và nhãn mật độ */}
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-sm text-gray-900 dark:text-white">
                                 {road}
                               </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
                               <Badge
                                 variant={
                                   color === "red"
@@ -190,14 +207,29 @@ const TrafficDashboard = () => {
                               >
                                 {getStatusText(status)}
                               </Badge>
+                            </div>
+
+                            {/* Thông tin số lượng và tốc độ */}
+                            <div className="flex items-center justify-between gap-2">
                               {data && (
-                                <div className="text-xs text-gray-500 flex items-center space-x-1">
-                                  <Car className="h-3 w-3" />
+                                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center space-x-1">
+                                  <Car className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                                   <span>{String(data.count_car)}</span>
-                                  <Bike className="h-3 w-3" />
+                                  <Bike className="h-3 w-3 ml-2 text-green-600 dark:text-green-400" />
                                   <span>{String(data.count_motor)}</span>
                                 </div>
                               )}
+                              <Badge
+                                variant="outline"
+                                className={`flex items-center space-x-1 text-xs px-2 py-0.5 ${
+                                  speedColor === "green"
+                                    ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
+                                    : "bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
+                                }`}
+                              >
+                                <Gauge className="h-3 w-3" />
+                                <span className="font-medium">{speedText}</span>
+                              </Badge>
                             </div>
                           </motion.div>
                         );
