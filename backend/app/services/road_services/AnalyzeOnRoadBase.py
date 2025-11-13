@@ -295,16 +295,16 @@ class AnalyzeOnRoadBase:
 
             colors = [(0, 0, 200), (200, 0, 0)]
 
-            for i, t in enumerate(info):
-                cvzone.putTextRect(
-                    self.frame_output, t,
-                    (10, 25 + i * 35),
-                    scale=1.5, thickness=2,
-                    colorT=colors[i],
-                    colorR=(50, 50, 50),
-                    border=2,
-                    colorB=(255, 255, 255)
-                )
+            # for i, t in enumerate(info):
+            #     cvzone.putTextRect(
+            #         self.frame_output, t,
+            #         (10, 25 + i * 35),
+            #         scale=1.5, thickness=2,
+            #         colorT=colors[i],
+            #         colorR=(50, 50, 50),
+            #         border=2,
+            #         colorB=(255, 255, 255)
+            #     )
 
         except Exception as e:
             print(f"Lỗi khi vẽ: {e}")
