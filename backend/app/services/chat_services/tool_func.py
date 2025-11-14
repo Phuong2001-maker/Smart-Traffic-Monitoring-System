@@ -25,7 +25,7 @@ def get_frame_road(road_name: Annotated[str, "Tên tuyến đường"]) -> str:
     Trả về url của ảnh JPEG.
     """
     try:
-        url = f"{BASE_URL}/frames/{road_name}"
+        url = f"{BASE_URL}/frames_no_auth/{road_name}"
         return url
     except Exception as e:
         return f"Lỗi không xác định: {str(e)}"

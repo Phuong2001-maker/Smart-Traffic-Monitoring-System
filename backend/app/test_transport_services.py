@@ -1,13 +1,16 @@
-from services.road_services.AnalyzeOnRoadForMultiProcessing import AnalyzeOnRoadForMultiprocessing
-from multiprocessing import freeze_support
+from services.road_services.AnalyzeOnRoadBase import AnalyzeOnRoadBase
+from core.config import settings_metric_transport
 
+if __name__ == "__main__":
+    # Example usage
+    path_video = settings_metric_transport.PATH_VIDEOS[3]
+    meter_per_pixel = settings_metric_transport.METER_PER_PIXELS[3]
 
-if __name__ == '__main__':
-    freeze_support()
-    analyzer = AnalyzeOnRoadForMultiprocessing(
-        show_log= True,
-        show= True, 
-        is_join_processes= True
+    analyzer = AnalyzeOnRoadBase(
+        path_video=path_video,
+        meter_per_pixel=meter_per_pixel,
+        region=settings_metric_transport.REGIONS[3],
+        show=True
     )
-    analyzer.run_multiprocessing()
-    
+
+    analyzer.process_on_single_video()
