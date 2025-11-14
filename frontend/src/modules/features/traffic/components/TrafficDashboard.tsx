@@ -244,11 +244,11 @@ const TrafficDashboard = () => {
       </div>
       {/* Floating QR bottom-right */}
       <a
-        href="https://t.me/fireappdetectbot"
+        href="https://t.me/Smart_Traffic_System_LVA_bot"
         target="_blank"
         rel="noreferrer"
         className="fixed bottom-4 right-4 z-50 group"
-        title="Mở Telegram: @fireappdetectbot"
+        title="Mở Telegram: @Smart_Traffic_System_LVA_bot"
       >
         <div className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/90 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-gray-900/70 p-2 transition-transform group-hover:scale-[1.02] w-40">
           <div className="text-center text-xs font-semibold mb-1 text-gray-800 dark:text-gray-200">
@@ -256,8 +256,8 @@ const TrafficDashboard = () => {
           </div>
           {!qrError ? (
             <img
-              src="/images/fireappdetectbot-qr.png"
-              alt="QR Telegram @fireappdetectbot"
+              src="/images/bot-qr.png"
+              alt="QR Telegram @Smart_Traffic_System_LVA_bot"
               className="w-36 h-36 object-contain mx-auto rounded-lg"
               loading="lazy"
               onError={() => setQrError(true)}
@@ -265,11 +265,11 @@ const TrafficDashboard = () => {
           ) : (
             <div className="w-36 h-36 flex items-center justify-center text-center text-[11px] font-medium text-gray-600 dark:text-gray-300 select-none">
               Chưa tìm thấy ảnh QR (đặt file vào
-              <br /> public/images/fireappdetectbot-qr.png)
+              <br /> public/images/bot-qr.png)
             </div>
           )}
           <div className="mt-1 text-center text-xs font-medium text-gray-700 dark:text-gray-300">
-            QR: @fireappdetectbot
+            QR: @Smart Traffic System
           </div>
         </div>
       </a>
