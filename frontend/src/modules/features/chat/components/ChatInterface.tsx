@@ -365,9 +365,9 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
   const scrollToBottom = useCallback(() => {
     // Sử dụng setTimeout để đảm bảo DOM đã update xong
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'end'
+      messagesEndRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
       });
     }, 100);
   }, []);
