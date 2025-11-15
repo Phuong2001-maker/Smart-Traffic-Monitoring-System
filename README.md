@@ -1,13 +1,13 @@
 # Smart Transportation Monitoring System
 
-A modern transportation monitoring and analysis system with real-time traffic analytics, vehicle detection, and an AI-powered chatbot interface.
+An intelligent traffic monitoring system that collects traffic flow and metrics including average speed and vehicle counts (motorcycles, cars) for each road. Features real-time data visualization with interactive dashboards and an integrated ReAct-based AI Agent chatbot for querying processed traffic data in real-time.
 
 ## Architecture Overview
 
 ### Backend Components
 
 - **Video Processing**
-  - YOLO model fine-tuned and optimized with INT8 OpenVINO
+  - YOLO model fine-tuned and optimized with INT8 OpenVINO and TensorRT
   - ByteTrack for object tracking
   - Multi-processing implementation for parallel video analysis
 - **API Layer**
@@ -15,47 +15,39 @@ A modern transportation monitoring and analysis system with real-time traffic an
   - WebSocket support for real-time data streaming
   - Background workers for continuous video analysis
 - **AI Assistant**
-  - ReActAgent based on LangGraph
+  - ReAct Agent based on LangGraph
   - Contextual understanding of traffic data
-  - Natural language interaction
-
-### Frontend Components
-
-- **Framework**
-  - React 18+ with TypeScript
-  - Vite for development and building
-  - ShadCN UI components
-- **Real-time Features**
-  - WebSocket integration (`src/hooks/useWebSocket.ts`)
-  - Live traffic metrics visualization
-  - Interactive video monitoring
+  - Natural language interaction for traffic queries
 
 ### Data Flow
 
-1. Video input → YOLO detection → ByteTrack tracking → Metrics computation
-2. FastAPI serves processed data via REST/WebSocket
-3. React frontend consumes and visualizes data in real-time
-4. AI Agent assistant processes natural language queries about traffic data
+1. **Video Processing Pipeline**
+
+   - Each video input runs in a separate subprocess
+   - YOLO detection → ByteTrack tracking → Metrics computation
+   - Each subprocess stores results in shared memory (main process)
+
+2. **Data Serving**
+
+   - FastAPI serves processed data via REST/WebSocket
+   - React frontend consumes and visualizes data in real-time
+
+3. **AI Assistant**
+   - Agent processes natural language queries about traffic data
+   - Retrieves real-time and historical traffic information
+   - Provides insights through conversational interface
 
 ## Features
 
-- Real-time traffic monitoring and analytics using AI-powered vehicle detection
+- Real-time traffic monitoring and analytics using AI-powered vehicle detection and tracking
 - Multi-camera support with parallel video processing
 - Interactive dashboard with real-time metrics and visualizations
 - AI chatbot for traffic insights and analysis
 - WebSocket integration for live streaming of frames and metrics
-- Optimized AI models (INT8 OpenVINO) for efficient inference
+- Optimized AI models (INT8 OpenVINO, TensorRT, ...) for efficient inference
 - Support for both CPU and GPU deployments
 
-## Screenshots
-
-<!-- ![Demo](https://raw.githubusercontent.com/vietanhlee/Smart-Transportation-System/refs/heads/main/.github/demo.png)
-![Demo 2](https://raw.githubusercontent.com/vietanhlee/Smart-Transportation-System/refs/heads/main/.github/demo2.png)
-![Dashboard](https://raw.githubusercontent.com/vietanhlee/Smart-Transportation-System/refs/heads/main/.github/Dashboad.png)
-![Dashboard 2](https://raw.githubusercontent.com/vietanhlee/Smart-Transportation-System/refs/heads/main/.github/Dashboad2.png)
-![Chatbot](https://raw.githubusercontent.com/vietanhlee/Smart-Transportation-System/refs/heads/main/.github/chatbot1.png)
-![Chatbot 2](https://raw.githubusercontent.com/vietanhlee/Smart-Transportation-System/refs/heads/main/.github/chatbot2.png)
-![Chatbot3](https://raw.githubusercontent.com/vietanhlee/Smart-Transportation-System/refs/heads/main/.github/chatbot3.png) -->
+## Short demo
 
 https://github.com/user-attachments/assets/b4a4dabd-2454-4123-ad9d-bd820a96a100
 
@@ -145,17 +137,18 @@ smart-transportation-system
 
 ## Requirements
 
-- Python 3.9 < 3.13
+- Python > 3.11
 - Node.js 18+
 - NVIDIA GPU (optional, for GPU acceleration)
 - Backend dependencies: `app/requirements_cpu.txt` or `app/requirements_gpu.txt`
 - Frontend dependencies: `package.json`
+- Database: Postgresql > 16
 
 ## Manual Setup
 
 ### Backend Setup
 
-1. From project root, navigate to the Backend directory:
+1. From project root, navigate to the app directory:
 
 ```bash
 cd Backend/app
@@ -175,14 +168,14 @@ pip install -r requirements_cpu.txt
 pip install -r requirements_gpu.txt
 ```
 
-3. For Linux systems, for OpenCV dependencies:
+- For Linux systems, for OpenCV dependencies:
 
 ```bash
 sudo apt update
 sudo apt install -y libgl1
 ```
 
-4. Download data video:
+4. Download videos resource:
 
 ```bash
 gdown --folder https://drive.google.com/drive/folders/1gkac5U5jEs174p7V7VC3rCmgvO_cVwxH
@@ -208,9 +201,9 @@ npm install pnpm
 pnpm install
 ```
 
-### Running the Application
+## Running the Application
 
-1. From Backend directory, start the backend server:
+1. From app directory, start the backend server:
 
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
@@ -239,7 +232,7 @@ Configured in `core/config.py` and can be customized environment variables.
 <details>
 <summary> <strong> Docker Deployment  </strong></summary>
 
-### Quick Start with Docker Compose
+## Quick Start with Docker Compose
 
 1. Download test videos (if not already downloaded):
 
@@ -261,7 +254,13 @@ Download test videos
 gdown --folder https://drive.google.com/drive/folders/1gkac5U5jEs174p7V7VC3rCmgvO_cVwxH
 ```
 
-Return to root directory for docker-compose
+Return to root directory for docker-compose:
+
+```bash
+cd ..
+```
+
+thêm một lần nữa để trở lại root
 
 ```bash
 cd ..
@@ -365,257 +364,72 @@ To enable GPU acceleration:
 
 ## API Documentation
 
-### REST Endpoints
+### Available Endpoints Overview
 
-#### Road Information
+**Authentication:**
 
-- `GET /roads_name`
+- `POST /auth/register` - User registration _(no auth)_
+- `POST /auth/login` - User login _(no auth)_
+- `GET /auth/me` - Get current user info _(requires JWT)_
+- `PUT /user/password` - Update password _(requires JWT)_
 
-  - Returns list of road names being processed
-  - Response:
-    ```json
-    {
-      "road_names": ["road1", "road2", ...]
-    }
-    ```
+**Traffic Monitoring:**
 
-- `GET /frames/{road_name}`
+- `GET /roads_name` - List of monitored roads _(no auth)_
+- `GET /info/{road_name}` - Traffic metrics (cars, motorcycles, speed, density status) _(requires JWT)_
+- `GET /frames/{road_name}` - Current road frame (JPEG) _(requires JWT)_
+- `WS /ws/frames/{road_name}` - Stream video frames (~30 FPS) _(requires JWT)_
+- `WS /ws/info/{road_name}` - Stream traffic metrics (~50 FPS) _(requires JWT)_
 
-  - Returns latest frame for specified road as raw JPEG bytes
-  - Response type: `image/jpeg`
-  - Error Response (500):
-    ```json
-    {
-      "error": "Lỗi: Dữ liệu bị lỗi, kiểm tra core"
-    }
-    ```
+**AI Chat:**
 
-- `GET /info/{road_name}`
-  - Returns latest traffic metrics for specified road
-  - Response:
-    ```json
-    {
-      "count_car": 12,
-      "count_motor": 31,
-      "speed_car": 32.4,
-      "speed_motor": 26.1
-    }
-    ```
-  - Error Response (500):
-    ```json
-    {
-      "error": "Lỗi: Dữ liệu bị lỗi, kiểm tra core"
-    }
-    ```
+- `POST /chat` - Send message to AI Assistant _(requires JWT)_
+- `WS /ws/chat` - Real-time chat WebSocket _(requires JWT)_
 
-#### Chat API
+**Admin (System Monitoring):**
 
-- `POST /chat`
-  - Send message to AI assistant
-  - Request:
-    ```json
-    {
-      "message": "string"
-    }
-    ```
-  - Response format:
-    ```json
-    {
-      "message": "string",
-      "image": list(url to image (byte code))
-    }
-    ```
+- `GET /admin/resources` - Get system metrics (CPU, RAM, Disk, Network) _(requires JWT + Admin role)_
+- `WS /admin/ws/resources` - Stream system metrics in real-time (2s interval) _(requires JWT + Admin role)_
 
-### WebSocket Endpoints
+### Authentication
 
-- `WS /ws/frames/{road_name}`
+The API uses **JWT (JSON Web Tokens)** for authentication:
 
-  - Streams continuous frames for specified road
-  - Message format: Raw JPEG bytes (binary)
-  - Frame rate: 15 FPS (sleep 1/15 second between frames)
+- **REST endpoints**: Add `Authorization: Bearer <JWT_TOKEN>` header
+- **WebSocket**: Pass token via query parameter `?token=<JWT_TOKEN>` or cookie
+- Endpoints marked _(requires JWT)_ need authentication, others are public
 
-- `WS /ws/info/{road_name}`
-
-  - Streams continuous traffic metrics for specified road
-  - Update interval: Every 5 seconds
-  - Message format:
-    ```json
-    {
-      "count_car": 12,
-      "count_motor": 31,
-      "speed_car": 32.4,
-      "speed_motor": 26.1
-    }
-    ```
-
-- `WS /chat`
-
-  - Basic chatbot WebSocket endpoint
-  - Request format:
-    ```json
-    {
-      "message": "string"
-    }
-    ```
-  - Response format:
-    ```json
-    {
-      "message": "string",
-      "image": list(url to image (byte code))
-    }
-    ```
-
-## API Authentication & Usage
-
-### User Registration
-
-`POST /register`
-
-**Request:**
-
-```json
-{
-  "username": "string",
-  "password": "string",
-  "email": "user@email.com",
-  "phone_number": "string"
-}
-```
-
-**Response:**
-
-```json
-{ "msg": "Register successful" }
-// or 400 if duplicate username/email/phone
-```
-
-### User Login
-
-`POST /login`
-
-**Request:**
-
-```json
-{
-  "username": "string", // or use "email"
-  "password": "string"
-}
-```
-
-**Response:**
-
-```json
-{ "access_token": "<JWT token>", "token_type": "bearer" }
-```
-
-### Token Requirement (VERY IMPORTANT)
-
-**All other API (including /chat, /info, /frames, etc.) require Bearer JWT token.**
-
-- Add `Authorization: Bearer <access_token>` header to EVERY request.
-
-**Example error if token missing/invalid:**
-
-```json
-{ "detail": "Token không hợp lệ hoặc đã hết hạn." }
-```
-
----
-
-### Example: Authenticated Chat Request
+### Quick Start
 
 ```bash
-# Login to get token:
-curl -X POST http://localhost:8000/login \
+# 1. Login to get JWT token
+curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "xxx", "password": "xxx"}'
+  -d '{"username": "user@example.com", "password": "your_password"}'
 
-# Save the token, then call:
+# Response: {"access_token": "eyJ...", "token_type": "bearer"}
+
+# 2. Use the token for authenticated requests
 curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
   -H "Authorization: Bearer <access_token>" \
-  -d '{"message": "Traffic info"}'
-```
-
----
-
-> **Lưu ý:** Tất cả API trừ /register, /login đều bắt buộc truyền Header `Authorization: Bearer <access_token>`. Thiếu hoặc sai sẽ trả lỗi 401 (Token không hợp lệ).
-
----
-
-## Protected REST Endpoints (require token)
-
-- `GET /roads_name`
-- `GET /frames/{road_name}`
-- `GET /info/{road_name}`
-- `POST /chat`
-- WebSocket endpoints: `ws/frames/{road_name}`, `ws/info/{road_name}`, `ws/chat` –> pass token in the header or via cookie if client supports
-
----
-
-<details> <summary> <strong> Example Usage </strong> </summary> 
-  
-- Get list of roads
-
-```bash
-curl http://localhost:8000/roads_name
-```
-
-- Get traffic info for specific road
-
-```bash
-curl http://localhost:8000/info/"Nguyễn Trãi"
-```
-
-- Get raw JPEG frame
-
-```bash
-curl http://localhost:8000/frames/"Nguyễn Trãi" --output frame.jpg
-```
-
-- Send chat message
-
-```bash
-curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
-  -d '{"message":"Traffic on Nguyen Trai?"}'
+  -d '{"message": "What is traffic like?"}'
 ```
-
-> Note: For WebSocket endpoints, you'll need to use a WebSocket client or the provided React frontend components.
-
-</details>
 
 ---
 
-<details> <summary> <strong> Troubleshooting Guide </strong> </summary>
+## Testing the API
 
-### Common Issues
+For detailed API testing and exploration, visit the interactive Swagger documentation at:
 
-1. **API Endpoint Errors**
+**`http://localhost:8000/docs`**
 
-   - 404 errors for `/vehicles` or legacy `/frames`
-   - Solution: Use current endpoints (`/road_name` and WebSocket endpoints)
-   - Close legacy tabs (e.g., `FRONTEND_for_testing/index.html`)
-   - Hard-reload the Vite app
+The Swagger UI provides:
 
-2. **CORS Issues**
-
-   - Backend uses permissive CORS in development
-   - For production: Configure `allow_origins` in `app/main.py`
-
-3. **Environment Changes**
-   - Requires Vite dev server restart
-   - Check environment variable loading in `config.ts`
-   </details>
-
-## 📚 Additional Documentation
-
-- **[Chat Account Separation Guide](CHAT_ACCOUNT_SEPARATION_GUIDE.md)** - Quick testing guide for multi-user chat isolation
-- **[Account Separation Fix Details](ACCOUNT_SEPARATION_FIX.md)** - Technical implementation details
-- **[Chat Database Guide](backend/CHAT_DATABASE_GUIDE.md)** - PostgreSQL backend for chat history
-- **[Chat Storage Comparison](CHAT_STORAGE_COMPARISON.md)** - localStorage vs Database comparison
-- **[Performance Optimization](PERFORMANCE_OPTIMIZATION.md)** - System optimization tips
-- **[Improvements](IMPROVEMENTS.md)** - Planned features and enhancements
+- Complete list of all endpoints with request/response schemas
+- Interactive "Try it out" functionality for each endpoint
+- Authentication support (use the "Authorize" button after login)
+- Real-time testing of REST and WebSocket connections
 
 ## 🔍 Chat System Features
 
@@ -634,6 +448,7 @@ curl -X POST http://localhost:8000/chat \
 debugChatStorage(); // Shows: token, storage keys, message counts
 ```
 
+<!--
 ### Database Backend (Optional)
 
 Backend APIs ready but not integrated yet:
@@ -642,11 +457,4 @@ Backend APIs ready but not integrated yet:
 - `GET /api/v1/chat/messages` - Get history
 - `DELETE /api/v1/chat/messages` - Clear history
 
-See `backend/CHAT_DATABASE_GUIDE.md` for integration steps.
-
-### Best Practices
-
-- Keep `videos_test` in `Backend/app/` directory
-- Monitor system resources during video processing
-- Use appropriate hardware acceleration (CPU/GPU) based on needs
-- Regular cleanup of processed video data
+See `backend/CHAT_DATABASE_GUIDE.md` for integration steps. -->
