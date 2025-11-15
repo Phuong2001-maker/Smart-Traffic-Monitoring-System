@@ -3,10 +3,15 @@ from dotenv import load_dotenv
 import numpy as np
 
 load_dotenv()
+DATABASE_USERNAME = os.getenv("DATABASE_USERNAME")
+DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
+DATABASE_PORT = os.getenv("DATABASE_PORT")
+DATABASE_HOST = os.getenv("DATABASE_HOST")
+DATABASE_NAME = os.getenv("DATABASE_NAME")
 
 class SettingServer:
     PROJECT_NAME = "FastAPI CRUD with JWT"
-    DATABASE_URL = os.getenv("DATABASE_URL")
+    DATABASE_URL = f"postgresql+asyncpg://{DATABASE_USERNAME}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
     JWT_SECRET = os.getenv("JWT_SECRET_KEY")
     JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
     ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("ACCESS_TOKEN_EXPIRE_DAYS"))
