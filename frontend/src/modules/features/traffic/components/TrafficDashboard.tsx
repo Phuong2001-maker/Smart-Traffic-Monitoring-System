@@ -18,6 +18,7 @@ import {
   useMultipleFrameStreams,
 } from "../../../../hooks/useWebSocket";
 import { endpoints } from "../../../../config";
+import { getThresholdForRoad } from "../../../../config/trafficThresholds";
 
 // Import types from the WebSocket hook
 type VehicleData = {
@@ -25,6 +26,11 @@ type VehicleData = {
   count_motor: number;
   speed_car: number;
   speed_motor: number;
+};
+
+type TrafficBackendData = VehicleData & {
+  density_status?: string;
+  speed_status?: string;
 };
 
 const TrafficDashboard = () => {
@@ -76,7 +82,7 @@ const TrafficDashboard = () => {
     const data = trafficData[roadName] as VehicleData | undefined;
     if (!data) return { status: "unknown", color: "gray", icon: Clock };
     // Prefer backend-provided classification when available
-    const densityFromBackend = (data as any)?.density_status;
+    const densityFromBackend = (data as TrafficBackendData).density_status;
     if (densityFromBackend) {
       if (densityFromBackend === "Tắc nghẽn")
         return { status: "congested", color: "red", icon: AlertTriangle };
@@ -85,23 +91,32 @@ const TrafficDashboard = () => {
       if (densityFromBackend === "Thông thoáng")
         return { status: "clear", color: "green", icon: CheckCircle };
     }
-
-    // Fallback: unknown when backend doesn't provide classification
-    return { status: "unknown", color: "gray", icon: Clock };
+    // Fallback: compute from local thresholds when backend doesn't provide classification
+    const threshold = getThresholdForRoad(roadName);
+    const totalVehicles = (data.count_car ?? 0) + (data.count_motor ?? 0);
+    if (totalVehicles > threshold.c2)
+      return { status: "congested", color: "red", icon: AlertTriangle };
+    if (totalVehicles > threshold.c1)
+      return { status: "busy", color: "yellow", icon: Clock };
+    return { status: "clear", color: "green", icon: CheckCircle };
   };
 
   const getSpeedStatus = (roadName: string) => {
     const data = trafficData[roadName] as VehicleData | undefined;
     if (!data) return { speedText: "Không rõ", speedColor: "gray" };
-    const speedFromBackend = (data as any)?.speed_status;
+    const speedFromBackend = (data as TrafficBackendData).speed_status;
     if (speedFromBackend) {
       if (speedFromBackend === "Nhanh chóng")
         return { speedText: "Nhanh chóng", speedColor: "green" };
       if (speedFromBackend === "Chậm chạp")
         return { speedText: "Chậm chạp", speedColor: "orange" };
     }
-
-    return { speedText: "Không rõ", speedColor: "gray" };
+    // Fallback: compute from local thresholds
+    const threshold = getThresholdForRoad(roadName);
+    const avgSpeed = ((data.speed_car ?? 0) + (data.speed_motor ?? 0)) / 2;
+    if (avgSpeed >= threshold.v)
+      return { speedText: "Nhanh chóng", speedColor: "green" };
+    return { speedText: "Chậm chạp", speedColor: "orange" };
   };
 
   const getStatusText = (status: string) => {
@@ -203,7 +218,7 @@ const TrafficDashboard = () => {
                                     ? "secondary"
                                     : "default"
                                 }
-                                className="text-xs"
+                                className="text-xs h-5 leading-none px-2 py-0"
                               >
                                 {getStatusText(status)}
                               </Badge>
@@ -221,7 +236,7 @@ const TrafficDashboard = () => {
                               )}
                               <Badge
                                 variant="outline"
-                                className={`flex items-center space-x-1 text-xs px-2 py-0.5 ${
+                                className={`flex items-center space-x-1 text-xs px-2 py-0 h-5 leading-none ${
                                   speedColor === "green"
                                     ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
                                     : "bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
