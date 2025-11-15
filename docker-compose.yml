@@ -4,12 +4,14 @@ services:
   database:
     image: postgres:16
     container_name: database
+    env_file:
+      - ./backend/.env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: odoo
-      POSTGRES_DB: transportation_system
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
     ports:
-      - "5433:5432"
+      - "${DATABASE_PORT}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -37,6 +39,9 @@ services:
     container_name: frontend
     ports:
       - "5173:5173"
+    volumes:
+      - ./frontend:/frontend
+      - /frontend/node_modules # Prevent host node_modules from overriding container's
     depends_on:
       - backend
     networks:
@@ -44,7 +49,5 @@ services:
 
 networks:
   mynet:
-
-
 # docker compose up --build
 
