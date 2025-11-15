@@ -358,7 +358,19 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Hàm scroll xuống cuối
+  const scrollToBottom = useCallback(() => {
+    // Sử dụng setTimeout để đảm bảo DOM đã update xong
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end'
+      });
+    }, 100);
+  }, []);
 
   // Track current token to reload messages when user switches accounts
   const [currentToken, setCurrentToken] = useState(() =>
@@ -431,11 +443,15 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
     }
   }, [trafficData, messages.length]);
 
+  // Auto-scroll khi messages thay đổi (gửi tin mới hoặc nhận tin mới)
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  }, [messages]);
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  // Scroll xuống cuối khi component mount (mở chat lần đầu)
+  useEffect(() => {
+    scrollToBottom();
+  }, [scrollToBottom]);
 
   // Chat WebSocket with authentication - setup trước để dùng trong handlers
   const token = localStorage.getItem(authConfig.TOKEN_KEY);
@@ -501,6 +517,9 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
       time: new Date().toLocaleTimeString("vi-VN"),
     };
     setMessages((prev) => [...prev, userMsg]);
+
+    // Scroll xuống sau khi thêm tin nhắn người dùng
+    scrollToBottom();
 
     // Add typing indicator
     const typingMsg: Message = {
@@ -734,6 +753,8 @@ const ChatInterface = ({ trafficData }: ChatInterfaceProps) => {
                 />
               ))}
             </AnimatePresence>
+            {/* Invisible element để scroll xuống */}
+            <div ref={messagesEndRef} className="h-1" />
           </div>
         </ScrollArea>
       </CardContent>
